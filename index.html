@@ -197,6 +197,14 @@ nav button{flex:1;min-width:0;flex-direction:column;justify-content:center;gap:2
     <div class="muted" id="acct">Not signed in.</div>
   </div>
   <div class="glass card" style="margin-top:14px">
+    <h2>Brain (Gemini)</h2>
+    <p class="muted">When Jarvis does not recognise a command, he asks Gemini, so you can talk naturally and ask questions. Get a free key at aistudio.google.com/apikey. On the free tier Google may use what you send to improve its products, so keep private things out. The key stays on this phone.</p>
+    <label for="gkey">API key</label><input id="gkey" type="password" autocomplete="off" placeholder="AIza…">
+    <label for="gmodel">Model</label><select id="gmodel"><option value="">Auto (gemini-flash-latest)</option></select>
+    <div class="row" style="margin:14px 0 8px"><button class="btn" id="gSave">Save key</button><button class="btn ghost" id="gModels">Load models</button><button class="btn ghost" id="gTest">Test</button><button class="btn ghost" id="gClear">Remove key</button></div>
+    <label style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="gOn" style="width:auto"> Use the brain for commands I do not recognise</label>
+  </div>
+  <div class="glass card" style="margin-top:14px">
     <h2>Voice</h2>
     <label for="wake">Wake word</label><input id="wake">
     <label for="voiceSel">Voice</label><select id="voiceSel"></select>
@@ -204,7 +212,7 @@ nav button{flex:1;min-width:0;flex-direction:column;justify-content:center;gap:2
     <label for="pitch">Pitch</label><input id="pitch" type="range" min=".5" max="1.5" step=".05">
     <div class="row" style="margin:14px 0 0"><button class="btn" id="jvPreset">Jarvis voice preset</button><button class="btn ghost" id="testVoice">Test voice</button></div>
   </div>
-<p class="muted" style="margin:14px 4px">Mars Jarvis v1.0 · phase two</p>
+<p class="muted" style="margin:14px 4px">Mars Jarvis v1.1 · phase two</p>
 </section>
 </main>
 </div>
@@ -353,8 +361,9 @@ function speak(t){
   speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);
   let v=speechSynthesis.getVoices().find(v=>v.name===db.settings.voice);if(!v&&!db.settings.voice)v=britishVoice();if(v){u.voice=v;u.lang=v.lang}u.rate=+db.settings.rate||1;u.pitch=+db.settings.pitch||1;
   u.onstart=()=>{speaking=true;setState()};u.onend=u.onerror=()=>{speaking=false;setState()};speechSynthesis.speak(u)}
-function setState(){document.body.dataset.state=db.settings.muted&&!listening?'muted':speaking?'speaking':listening?'listening':'idle';
-  $('#stateLabel').textContent={idle:'Idle',listening:'Listening',speaking:'Speaking',muted:'Muted'}[document.body.dataset.state]}
+let thinking=false;
+function setState(){document.body.dataset.state=thinking?'thinking':db.settings.muted&&!listening?'muted':speaking?'speaking':listening?'listening':'idle';
+  $('#stateLabel').textContent={idle:'Idle',listening:'Listening',speaking:'Speaking',muted:'Muted',thinking:'Thinking'}[document.body.dataset.state]}
 
 $$('.holo-wrap').forEach(w=>{w.addEventListener('click',()=>$('#listenBtn').click());w.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();$('#listenBtn').click()}})});
 
@@ -381,7 +390,7 @@ function setMute(m){db.settings.muted=m;if(m){if('speechSynthesis' in window)spe
 let armed=false,armT=null;
 function beep(){try{const a=new(window.AudioContext||window.webkitAudioContext)(),o=a.createOscillator(),g=a.createGain();o.frequency.value=880;g.gain.value=.06;o.connect(g);g.connect(a.destination);o.start();o.stop(a.currentTime+.12)}catch{}}
 function heard(raw){
-  if(speaking)return;const t=(raw||'').trim();if(!t)return;const wake=(db.settings.wake||'jarvis').toLowerCase(),i=t.toLowerCase().indexOf(wake);
+  if(speaking||thinking)return;const t=(raw||'').trim();if(!t)return;const wake=(db.settings.wake||'jarvis').toLowerCase(),i=t.toLowerCase().indexOf(wake);
   if(i<0){if(ptt||awaiting||armed){armed=false;clearTimeout(armT);$('#heard').textContent='“'+t+'”';run(t)}return}
   const cmd=t.slice(i+wake.length).replace(/^[\s,.:!]+/,'');
   if(cmd){armed=false;$('#heard').textContent='“'+t+'”';run(cmd)}
@@ -424,13 +433,64 @@ function run(input){
   if(/^unmute$/i.test(c)){setMute(false);return say('Voice is back on.')}
   if(/^(?:what(?:'s| is) the )?time$/i.test(c))return say('It is '+new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})+'.');
   if(/^(?:hello|hi|hey)$/i.test(c))return say('At your service.');
+  if(brainReady())return askBrain(input);
   say('I did not understand that. Try “add note” or “add task”.')}
+/* ---------- conversational brain (Gemini) ---------- */
+const GURL='https://generativelanguage.googleapis.com/v1beta/';
+const brainKey=()=>localStorage.getItem('mj_gemini')||'';
+const brainReady=()=>!!brainKey()&&db.settings.brain!==false&&navigator.onLine;
+const SYS="You are J.A.R.V.I.S., the calm, dry-witted British AI inside the user's personal dashboard called Mars Jarvis. Your replies are spoken aloud: plain text only, no markdown, no lists, at most three short sentences. Be warm, precise and a little witty. You can manage the dashboard by returning actions: add_note (text), add_task (text, priority), complete_task and delete_task (query = the task number or words from it), set_priority (query, priority), delete_note (query), add_research (text = title, plus url, notes, tags), open_page (text = home, memory, tasks, research, voice or settings). Only return an action when the user clearly asks for it, and make your reply confirm it in the past tense. Never claim to have done something you did not return as an action. Use the dashboard state to answer questions about tasks, notes and research. If you do not know something, say so plainly. The user speaks through speech recognition, so interpret transcription errors generously.";
+const SCHEMA={type:'OBJECT',properties:{reply:{type:'STRING'},actions:{type:'ARRAY',items:{type:'OBJECT',properties:{type:{type:'STRING',enum:['add_note','add_task','complete_task','delete_task','set_priority','delete_note','add_research','open_page']},text:{type:'STRING'},priority:{type:'STRING',enum:['high','medium','low']},query:{type:'STRING'},url:{type:'STRING'},notes:{type:'STRING'},tags:{type:'ARRAY',items:{type:'STRING'}}},required:['type']}}},required:['reply']};
+function brainContext(){
+  const open=sortedTasks().filter(t=>!t.done).slice(0,15).map((t,i)=>`${i+1}. ${t.text} [${t.priority}]`);
+  return `Time: ${new Date().toLocaleString()}\nOpen tasks:\n${open.join('\n')||'none'}\nTotal notes: ${db.notes.length}. Latest notes: ${JSON.stringify(db.notes.slice(0,6).map(n=>n.text.slice(0,140)))}\nResearch titles: ${JSON.stringify(db.research.slice(0,6).map(r=>r.title))}`}
+function runActions(list){
+  let bad=0;
+  for(const a of list){
+    const q=a.query||a.text||'';
+    if(a.type==='add_note'&&a.text)memory.add('notes',{text:a.text});
+    else if(a.type==='add_task'&&a.text)memory.add('tasks',{text:a.text,priority:a.priority||'medium',done:false});
+    else if(a.type==='add_research'&&(a.text||a.url))memory.add('research',{title:a.text||a.url,url:a.url||'',notes:a.notes||'',tags:a.tags||[]});
+    else if(a.type==='open_page'&&['home','memory','tasks','research','voice','settings'].includes((a.text||'').toLowerCase()))go(a.text.toLowerCase());
+    else if(['complete_task','delete_task','set_priority'].includes(a.type)){const t=findBy(sortedTasks(),q);if(!t)bad++;else if(a.type==='complete_task')memory.edit('tasks',t.id,{done:true});else if(a.type==='delete_task')memory.remove('tasks',t.id);else memory.edit('tasks',t.id,{priority:a.priority||'medium'})}
+    else if(a.type==='delete_note'){const n=findBy(db.notes,q);if(!n)bad++;else memory.remove('notes',n.id)}
+  }
+  return bad}
+async function askBrain(input){
+  thinking=true;setState();$('#heard').textContent='Thinking…';
+  let out=null,err=null;
+  try{
+    const hist=db.conversations.filter(c=>c.heard&&c.reply).slice(0,6).reverse().flatMap(c=>[{role:'user',parts:[{text:c.heard}]},{role:'model',parts:[{text:c.reply}]}]);
+    const r=await fetch(GURL+'models/'+encodeURIComponent(db.settings.model||'gemini-flash-latest')+':generateContent',{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':brainKey()},body:JSON.stringify({
+      systemInstruction:{parts:[{text:SYS}]},
+      contents:[...hist,{role:'user',parts:[{text:input+'\n\n[Dashboard state]\n'+brainContext()}]}],
+      generationConfig:{responseMimeType:'application/json',responseSchema:SCHEMA,temperature:.6,maxOutputTokens:1024}})});
+    if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error((e.error&&e.error.message)||('HTTP '+r.status))}
+    const j=await r.json(),parts=j.candidates&&j.candidates[0]&&j.candidates[0].content&&j.candidates[0].content.parts;
+    out=JSON.parse((parts||[]).map(p=>p.text||'').join(''));
+  }catch(e){err=e}
+  thinking=false;setState();
+  if(err){reply(input,'I could not reach my brain just now.');toast(String(err.message||err).slice(0,140));return}
+  const bad=runActions(out.actions||[]);
+  reply(input,(out.reply||'Done.')+(bad?' I could not find '+(bad>1?'some of those items.':'one of those items.'):''))}
+
 $('#cmdGo').onclick=()=>{const v=$('#cmdIn').value.trim();if(v){$('#heard').textContent='“'+v+'”';run(v.replace(new RegExp('^'+(db.settings.wake||'jarvis')+'[\\s,]*','i'),''));$('#cmdIn').value=''}};
 $('#cmdIn').onkeydown=e=>{if(e.key==='Enter')$('#cmdGo').click()};
 
 /* ---------- settings ---------- */
-function applySettings(){$('#wake').value=db.settings.wake;$('#rate').value=db.settings.rate;$('#pitch').value=db.settings.pitch||.9;voices();$('#muteBtn').textContent=db.settings.muted?'Unmute voice':'Mute voice';setState()}
+function applySettings(){$('#wake').value=db.settings.wake;$('#rate').value=db.settings.rate;$('#pitch').value=db.settings.pitch||.9;$('#gOn').checked=db.settings.brain!==false;if(brainKey())$('#gkey').placeholder='Key saved on this phone';{const sel=$('#gmodel');if(db.settings.model&&![...sel.options].some(o=>o.value===db.settings.model))sel.append(h('option',{value:db.settings.model},db.settings.model));sel.value=db.settings.model||''}voices();$('#muteBtn').textContent=db.settings.muted?'Unmute voice':'Mute voice';setState()}
 $('#wake').onchange=e=>{db.settings.wake=(e.target.value.trim()||'jarvis').toLowerCase();memory.save()};
+$('#gSave').onclick=()=>{const k=$('#gkey').value.trim();if(!k){toast('Paste your key first.');return}localStorage.setItem('mj_gemini',k);$('#gkey').value='';$('#gkey').placeholder='Key saved on this phone';toast('Key saved on this phone.')};
+$('#gClear').onclick=()=>{localStorage.removeItem('mj_gemini');$('#gkey').placeholder='AIza…';toast('Key removed.')};
+$('#gOn').onchange=e=>{db.settings.brain=e.target.checked;memory.save()};
+$('#gmodel').onchange=e=>{db.settings.model=e.target.value;memory.save()};
+$('#gTest').onclick=()=>{if(!brainKey()){toast('Save your key first.');return}askBrain('Introduce yourself in one short sentence.')};
+$('#gModels').onclick=async()=>{
+  if(!brainKey()){toast('Save your key first.');return}
+  try{const r=await fetch(GURL+'models?pageSize=200',{headers:{'x-goog-api-key':brainKey()}});if(!r.ok)throw new Error((await r.json().catch(()=>({}))).error?.message||'HTTP '+r.status);
+    const L=((await r.json()).models||[]).filter(m=>(m.supportedGenerationMethods||[]).includes('generateContent')&&/flash/i.test(m.name)&&!/lite|image|tts|live|audio|embed|robotics|computer/i.test(m.name)).map(m=>m.name.replace('models/','')).sort().reverse();
+    const sel=$('#gmodel');sel.replaceChildren(h('option',{value:''},'Auto (gemini-flash-latest)'),...L.map(n=>h('option',{value:n,selected:n===db.settings.model},n)));toast(L.length+' models found.')}
+  catch(e){toast(String(e.message||e).slice(0,140))}};
 $('#pitch').onchange=e=>{db.settings.pitch=+e.target.value;memory.save()};
 $('#testVoice').onclick=()=>{db.settings.muted=false;speak('Good evening. All systems are online.')};
 $('#jvPreset').onclick=()=>{const v=britishVoice();if(v)db.settings.voice=v.name;db.settings.pitch=.85;db.settings.rate=.95;db.settings.muted=false;memory.save();applySettings();speak('Good evening. All systems are online.');if(!v)toast('No British voice found on this device. Pick one from the list.')};
@@ -444,7 +504,7 @@ $('#signIn').onclick=signIn;$('#signOut').onclick=()=>signOut();$('#bannerBtn').
   const cvs=$$('.holo-cv');if(!cvs.length)return;
   const N=900,P=[],XY=new Float32Array(N*3);for(let i=0;i<N;i++){const y=1-2*(i+.5)/N,r=Math.sqrt(1-y*y),a=i*2.399963;P.push([Math.cos(a)*r,y,Math.sin(a)*r,Math.random()*6.28])}
   const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const COL={idle:[94,200,255],listening:[150,240,255],speaking:[190,225,255],muted:[105,115,130]},ORANGE=[255,120,70];
+  const COL={idle:[94,200,255],listening:[150,240,255],speaking:[190,225,255],muted:[105,115,130],thinking:[175,150,255]},ORANGE=[255,120,70];
   let C=[...COL.idle],E=.25,ang=0,last=0;
   const rgba=(c,a)=>`rgba(${c[0]|0},${c[1]|0},${c[2]|0},${Math.max(0,Math.min(1,a))})`;
   function arcs(g,cx,r,start,n,span,lw,col,a){g.lineWidth=lw;g.strokeStyle=rgba(col,a);for(let i=0;i<n;i++){const a0=start+i*6.2832/n;g.beginPath();g.arc(cx,cx,r,a0,a0+span);g.stroke()}}
@@ -478,7 +538,7 @@ $('#signIn').onclick=signIn;$('#signOut').onclick=()=>signOut();$('#bannerBtn').
     arcs(g,cx,R*.66,-ang*1.7,2,2.1,3.5*d*u,C,.85);
     g.setLineDash([2*d*u,5*d*u]);g.lineDashOffset=t*10*d;arcs(g,cx,R*.48,0,1,6.2832,1*d*u,C,.45);g.setLineDash([]);
     // pulse waves
-    const rate=st==='speaking'?.9:st==='listening'?.55:.2,wc=st==='speaking'?ORANGE:C;
+    const rate=st==='thinking'?.8:st==='speaking'?.9:st==='listening'?.55:.2,wc=st==='speaking'?ORANGE:C;
     for(let k=0;k<3;k++){const ph=(t*rate+k/3)%1;g.lineWidth=(1+2*(1-ph))*d;g.strokeStyle=rgba(wc,(1-ph)*(.12+E*.5));g.beginPath();g.arc(cx,cx,R*(.3+.7*ph),0,6.2832);g.stroke()}
     // title
     g.textAlign='center';g.textBaseline='middle';g.font=`700 ${Math.round(W*.072)}px Orbitron,'Segoe UI',sans-serif`;if('letterSpacing' in g)g.letterSpacing=Math.round(W*.01)+'px';
@@ -489,10 +549,10 @@ $('#signIn').onclick=signIn;$('#signOut').onclick=()=>signOut();$('#bannerBtn').
   function frame(now){
     const t=now/1000,dt=Math.min(.05,t-last||.016);last=t;
     const st=document.body.dataset.state||'idle';
-    const tE=st==='speaking'?.55+.45*Math.abs(Math.sin(t*7)*Math.sin(t*3.1+1)):st==='listening'?.65:st==='muted'?.08:.25;
+    const tE=st==='speaking'?.55+.45*Math.abs(Math.sin(t*7)*Math.sin(t*3.1+1)):st==='thinking'?.8:st==='listening'?.65:st==='muted'?.08:.25;
     E+=(tE-E)*Math.min(1,dt*8);
     const tc=COL[st]||COL.idle;for(let i=0;i<3;i++)C[i]+=(tc[i]-C[i])*Math.min(1,dt*4);
-    ang+=dt*(st==='speaking'?.8:st==='listening'?.55:st==='muted'?.08:.22);
+    ang+=dt*(st==='thinking'?1.1:st==='speaking'?.8:st==='listening'?.55:st==='muted'?.08:.22);
     cvs.forEach(c=>draw(c,t,st));requestAnimationFrame(frame)}
   if(reduce)cvs.forEach(c=>draw(c,2,'idle'));else requestAnimationFrame(frame);
 })();
