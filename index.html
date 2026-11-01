@@ -197,8 +197,10 @@ nav button{flex:1;min-width:0;flex-direction:column;justify-content:center;gap:2
     <label for="wake">Wake word</label><input id="wake">
     <label for="voiceSel">Voice</label><select id="voiceSel"></select>
     <label for="rate">Speech rate</label><input id="rate" type="range" min=".7" max="1.4" step=".05">
+    <label for="pitch">Pitch</label><input id="pitch" type="range" min=".5" max="1.5" step=".05">
+    <div class="row" style="margin:14px 0 0"><button class="btn" id="jvPreset">Jarvis voice preset</button><button class="btn ghost" id="testVoice">Test voice</button></div>
   </div>
-<p class="muted" style="margin:14px 4px">Mars Jarvis v0.5 · phase two</p>
+<p class="muted" style="margin:14px 4px">Mars Jarvis v0.6 · phase two</p>
 </section>
 </main>
 </div>
@@ -213,7 +215,7 @@ nav button{flex:1;min-width:0;flex-direction:column;justify-content:center;gap:2
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 const FILE='jarvis_data.json',SCOPE='https://www.googleapis.com/auth/drive.file openid email';
 const h=(t,a={},...k)=>{const e=document.createElement(t);for(const[n,v]of Object.entries(a)){if(n==='class')e.className=v;else if(n.startsWith('on'))e.addEventListener(n.slice(2),v);else if(v!=null&&v!==false)e.setAttribute(n,v===true?'':v)}for(const c of k.flat())e.append(c&&c.nodeType?c:document.createTextNode(c??''));return e};
-const blank=()=>({notes:[],tasks:[],research:[],settings:{wake:'jarvis',voice:'',rate:1,muted:false},conversations:[]});
+const blank=()=>({notes:[],tasks:[],research:[],settings:{wake:'jarvis',voice:'',rate:.95,pitch:.9,muted:false},conversations:[]});
 let db=blank(),token=null,tokenClient=null,fileId=null,saveT=null,signedIn=false;
 
 /* ---------- toast + sync ---------- */
@@ -339,12 +341,13 @@ $('#taskAdd').onclick=addTask;$('#taskIn').onkeydown=e=>{if(e.key==='Enter')addT
 
 /* ---------- speech out ---------- */
 let speaking=false;
+function britishVoice(){const L=speechSynthesis.getVoices().filter(v=>/^en[-_]GB/i.test(v.lang));return L.find(v=>/male|daniel|george|ryan|arthur|gbb|gbd|rjs/i.test(v.name)&&!/female/i.test(v.name))||L[0]}
 function voices(){const s=$('#voiceSel');s.replaceChildren(h('option',{value:''},'System default'));speechSynthesis.getVoices().forEach(v=>s.append(h('option',{value:v.name,selected:v.name===db.settings.voice},`${v.name} (${v.lang})`)))}
 if('speechSynthesis' in window){speechSynthesis.onvoiceschanged=voices;voices()}
 function speak(t){
   if(!('speechSynthesis' in window)||db.settings.muted)return;
   speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);
-  const v=speechSynthesis.getVoices().find(v=>v.name===db.settings.voice);if(v)u.voice=v;u.rate=+db.settings.rate||1;
+  let v=speechSynthesis.getVoices().find(v=>v.name===db.settings.voice);if(!v&&!db.settings.voice)v=britishVoice();if(v){u.voice=v;u.lang=v.lang}u.rate=+db.settings.rate||1;u.pitch=+db.settings.pitch||1;
   u.onstart=()=>{speaking=true;setState()};u.onend=u.onerror=()=>{speaking=false;setState()};speechSynthesis.speak(u)}
 function setState(){document.body.dataset.state=db.settings.muted&&!listening?'muted':speaking?'speaking':listening?'listening':'idle';
   $('#stateLabel').textContent={idle:'Idle',listening:'Listening',speaking:'Speaking',muted:'Muted'}[document.body.dataset.state]}
@@ -420,8 +423,11 @@ $('#cmdGo').onclick=()=>{const v=$('#cmdIn').value.trim();if(v){$('#heard').text
 $('#cmdIn').onkeydown=e=>{if(e.key==='Enter')$('#cmdGo').click()};
 
 /* ---------- settings ---------- */
-function applySettings(){$('#wake').value=db.settings.wake;$('#rate').value=db.settings.rate;voices();$('#muteBtn').textContent=db.settings.muted?'Unmute voice':'Mute voice';setState()}
+function applySettings(){$('#wake').value=db.settings.wake;$('#rate').value=db.settings.rate;$('#pitch').value=db.settings.pitch||.9;voices();$('#muteBtn').textContent=db.settings.muted?'Unmute voice':'Mute voice';setState()}
 $('#wake').onchange=e=>{db.settings.wake=(e.target.value.trim()||'jarvis').toLowerCase();memory.save()};
+$('#pitch').onchange=e=>{db.settings.pitch=+e.target.value;memory.save()};
+$('#testVoice').onclick=()=>{db.settings.muted=false;speak('Good evening. All systems are online.')};
+$('#jvPreset').onclick=()=>{const v=britishVoice();if(v)db.settings.voice=v.name;db.settings.pitch=.85;db.settings.rate=.95;db.settings.muted=false;memory.save();applySettings();speak('Good evening. All systems are online.');if(!v)toast('No British voice found on this device. Pick one from the list.')};
 $('#rate').onchange=e=>{db.settings.rate=+e.target.value;memory.save()};
 $('#voiceSel').onchange=e=>{db.settings.voice=e.target.value;memory.save();speak('Voice updated.')};
 $('#cid').value=localStorage.getItem('mj_cid')||'';
