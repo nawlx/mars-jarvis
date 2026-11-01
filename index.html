@@ -63,6 +63,7 @@ textarea{resize:vertical;min-height:90px}
 .done .chk{border-color:var(--ok)}
 .pri{font-size:14px;border-radius:99px;padding:1px 10px;border:1px solid;cursor:pointer;background:none;flex:none}
 .pri.high{color:var(--mars);border-color:var(--mars)}.pri.medium{color:#ffd166;border-color:#ffd166}.pri.low{color:var(--ice);border-color:var(--ice)}
+.item a{color:var(--ice);overflow-wrap:anywhere}
 .empty{padding:26px;text-align:center;color:var(--muted)}
 /* reactor */
 .reactor{width:var(--s,220px);height:var(--s,220px);margin:auto;display:block}
@@ -105,6 +106,7 @@ nav button{flex-direction:column;gap:2px;font-size:13px;padding:6px 8px}
   <button data-v="home" aria-current="page"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg>Home</button>
   <button data-v="memory"><svg viewBox="0 0 24 24"><path d="M5 3h10l4 4v14H5zM9 12h6M9 16h6"/></svg>Memory</button>
   <button data-v="tasks"><svg viewBox="0 0 24 24"><path d="M4 12l5 5L20 6"/></svg>Tasks</button>
+  <button data-v="research"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg>Research</button>
   <button data-v="voice"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg>Voice</button>
   <button data-v="settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg>Settings</button>
   <div class="sp"></div>
@@ -126,6 +128,7 @@ nav button{flex-direction:column;gap:2px;font-size:13px;padding:6px 8px}
   <div class="grid" style="margin-top:14px">
     <div class="glass card"><h2>Notes</h2><div class="big" id="sNotes">0</div></div>
     <div class="glass card"><h2>Open tasks</h2><div class="big" id="sTasks">0</div></div>
+    <div class="glass card"><h2>Research</h2><div class="big" id="sRes">0</div></div>
     <div class="glass card"><h2>Commands</h2><div class="big" id="sCmds">0</div></div>
   </div>
   <div class="glass card" style="margin-top:14px"><h2>Recent activity</h2><div class="hist" id="homeHist"></div></div>
@@ -142,6 +145,17 @@ nav button{flex-direction:column;gap:2px;font-size:13px;padding:6px 8px}
   <h1>Tasks</h1>
   <div class="row"><input id="taskIn" placeholder="Add a task" aria-label="New task"><select id="taskPri" aria-label="Priority"><option value="high">High</option><option value="medium" selected>Medium</option><option value="low">Low</option></select><button class="btn" id="taskAdd">Add task</button></div>
   <div class="list" id="taskList"></div>
+</section>
+
+<section id="research">
+  <h1>Research</h1>
+  <div class="glass card" style="margin-bottom:14px">
+    <div class="row"><input id="resTitle" placeholder="Topic or title" aria-label="Research title"><input id="resUrl" placeholder="Link (optional)" inputmode="url" aria-label="Link"></div>
+    <div class="row"><textarea id="resNotes" placeholder="Notes" aria-label="Research notes"></textarea></div>
+    <div class="row" style="margin:0"><input id="resTags" placeholder="Tags, separated by commas" aria-label="Tags"><button class="btn" id="resAdd">Save research</button></div>
+  </div>
+  <div class="row"><input id="resQ" type="search" placeholder="Search research" aria-label="Search research"></div>
+  <div class="list" id="resList"></div>
 </section>
 
 <section id="voice">
@@ -161,7 +175,7 @@ nav button{flex-direction:column;gap:2px;font-size:13px;padding:6px 8px}
   <div class="row" style="margin-top:14px"><input id="cmdIn" placeholder="Or type a command, e.g. add task call mom" aria-label="Type a command"><button class="btn" id="cmdGo">Run</button></div>
   <div class="glass card"><h2>Command history</h2><div class="hist" id="voiceHist"></div></div>
   <div class="glass card" style="margin-top:14px"><h2>Commands</h2>
-    <div class="muted">add note … · show notes · search notes … · delete last note · delete note 2<br>add task … (add “high priority” at the end) · complete task 1 · delete task … · set priority of task 2 to high · show tasks<br>go to home / memory / tasks / settings · mute · unmute</div></div>
+    <div class="muted">add note … · show notes · search notes … · delete last note · delete note 2<br>add task … (add “high priority” at the end) · complete task 1 · delete task … · set priority of task 2 to high · show tasks<br>research quantum computing · show research · search research … · delete research 1<br>go to home / memory / tasks / research / settings · mute · unmute</div></div>
 </section>
 
 <section id="settings">
@@ -183,6 +197,9 @@ nav button{flex-direction:column;gap:2px;font-size:13px;padding:6px 8px}
 </main>
 </div>
 <dialog id="dlg"><h2>Edit note</h2><textarea id="dlgText" aria-label="Note text"></textarea><div class="row" style="margin:12px 0 0;justify-content:flex-end"><button class="btn ghost" id="dlgCancel">Cancel</button><button class="btn" id="dlgSave">Save changes</button></div></dialog>
+<dialog id="rdlg"><h2>Edit research</h2>
+<label for="rdTitle">Title</label><input id="rdTitle"><label for="rdUrl">Link</label><input id="rdUrl"><label for="rdNotes">Notes</label><textarea id="rdNotes"></textarea><label for="rdTags">Tags</label><input id="rdTags">
+<div class="row" style="margin:14px 0 0;justify-content:flex-end"><button class="btn ghost" id="rdCancel">Cancel</button><button class="btn" id="rdSave">Save changes</button></div></dialog>
 <div id="toast" class="glass"></div>
 
 <script>
@@ -280,11 +297,31 @@ function renderHist(){
   const fill=(sel,n)=>{const b=$(sel);b.replaceChildren();db.conversations.slice(0,n).forEach(c=>{b.append(h('div',{class:'u'},'You: '+c.heard),h('div',{class:'j'},'Jarvis: '+c.reply))});if(!b.children.length)b.append(h('div',{class:'muted'},'No commands yet.'))};
   fill('#homeHist',3);fill('#voiceHist',12)}
 function renderAll(){
-  renderNotes();renderTasks();renderHist();
+  renderNotes();renderTasks();renderResearch();renderHist();
+  $('#sRes').textContent=db.research.length;
   $('#sNotes').textContent=db.notes.length;$('#sTasks').textContent=db.tasks.filter(t=>!t.done).length;
   const d0=new Date().setHours(0,0,0,0);$('#sCmds').textContent=db.conversations.filter(c=>c.created>=d0).length}
 function tick(){const d=new Date(),g=d.getHours()<12?'Good morning':d.getHours()<18?'Good afternoon':'Good evening';$('#greet').textContent=g+'. Mars Jarvis is online.';$('#clock').textContent=d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}
 setInterval(tick,5000);tick();
+
+/* research */
+let resFilter='';
+const link=u=>/^https?:\/\//i.test(u)?h('a',{href:u,target:'_blank',rel:'noopener'},u):u;
+const tagList=v=>v.split(',').map(x=>x.trim().replace(/^#/,'')).filter(Boolean);
+function renderResearch(){
+  const q=resFilter.toLowerCase(),box=$('#resList');box.replaceChildren();
+  const L=db.research.filter(r=>[r.title,r.url,r.notes,(r.tags||[]).join(' ')].join(' ').toLowerCase().includes(q));
+  if(!L.length)box.append(h('div',{class:'glass empty'},q?'No research matches your search.':'No research yet. Add a topic above or say “Jarvis, research quantum computing”.'));
+  L.forEach(r=>box.append(h('div',{class:'glass item'},
+    h('div',{class:'t'},h('b',{},r.title),r.url?h('small',{},link(r.url)):'',r.notes?h('div',{},r.notes):'',(r.tags&&r.tags.length)?h('small',{},r.tags.map(t=>'#'+t).join(' ')):'',h('small',{},fmt(r.updated||r.created))),
+    h('div',{class:'acts'},h('button',{class:'btn sm ghost',onclick:()=>editRes(r)},'Edit'),h('button',{class:'btn sm ghost',onclick:()=>memory.remove('research',r.id)},'Delete')))))}
+function editRes(r){$('#rdTitle').value=r.title;$('#rdUrl').value=r.url||'';$('#rdNotes').value=r.notes||'';$('#rdTags').value=(r.tags||[]).join(', ');$('#rdlg').showModal();
+  $('#rdSave').onclick=()=>{const t=$('#rdTitle').value.trim();if(t){memory.edit('research',r.id,{title:t,url:$('#rdUrl').value.trim(),notes:$('#rdNotes').value.trim(),tags:tagList($('#rdTags').value)});$('#rdlg').close()}}}
+$('#rdCancel').onclick=()=>$('#rdlg').close();
+$('#resAdd').onclick=()=>{const t=$('#resTitle').value.trim();if(!t){toast('Give the research a title.');return}
+  memory.add('research',{title:t,url:$('#resUrl').value.trim(),notes:$('#resNotes').value.trim(),tags:tagList($('#resTags').value)});
+  ['#resTitle','#resUrl','#resNotes','#resTags'].forEach(i=>$(i).value='')};
+$('#resQ').oninput=e=>{resFilter=e.target.value;renderResearch()};
 
 /* notes + tasks UI */
 function editNote(n){$('#dlgText').value=n.text;$('#dlg').showModal();$('#dlgSave').onclick=()=>{const v=$('#dlgText').value.trim();if(v){memory.edit('notes',n.id,{text:v});$('#dlg').close()}}}
@@ -333,13 +370,18 @@ function heard(raw){
 /* ---------- command engine ---------- */
 function reply(heardTxt,text){speak(text);toast(text);db.conversations.unshift({id:crypto.randomUUID(),created:Date.now(),heard:heardTxt,reply:text});db.conversations=db.conversations.slice(0,200);memory.save();renderHist();renderAll()}
 const norm=s=>s.replace(/[.!?]+$/,'').trim();
-const findBy=(list,q)=>/^\d+$/.test(q)?list[+q-1]:list.find(x=>x.text.toLowerCase().includes(q.toLowerCase()));
+const findBy=(list,q)=>/^\d+$/.test(q)?list[+q-1]:list.find(x=>(x.text||x.title||'').toLowerCase().includes(q.toLowerCase()));
 let awaiting=null,awaitT=null;
 const fix=s=>s.replace(/^(?:had|ad|at|and|eight|add)\s+(?:a\s+)?(?:not|nut|node|nope|note|memory note)\b/i,'add note').replace(/^adnut\b/i,'add note').replace(/^(?:had|ad|at|and|add)\s+(?:a\s+)?(?:tusk|desk|tasks?)\b/i,'add task').replace(/^(?:save|safe)\s+(?:the\s+)?(?:not|nut|node|note)\b/i,'save note');
 function run(input){
-  if(awaiting){const k=awaiting;awaiting=null;clearTimeout(awaitT);const t=norm(input);if(k==='note'){memory.add('notes',{text:t});return reply(input,'I have saved your note.')}memory.add('tasks',{text:t,priority:'medium',done:false});return reply(input,'Task added.')}
+  if(awaiting){const k=awaiting;awaiting=null;clearTimeout(awaitT);const t=norm(input);if(k==='note'){memory.add('notes',{text:t});return reply(input,'I have saved your note.')}if(k==='research'){memory.add('research',{title:t,url:'',notes:'',tags:[]});return reply(input,'Research saved.')}memory.add('tasks',{text:t,priority:'medium',done:false});return reply(input,'Task added.')}
   const c=fix(norm(input)),say=t=>reply(input,t);let m;
   if(/^(?:add|save)\s+note$/i.test(c)){awaiting='note';awaitT=setTimeout(()=>awaiting=null,20000);return say('What should the note say?')}
+  if(/^(?:add|new)\s+research$/i.test(c)){awaiting='research';awaitT=setTimeout(()=>awaiting=null,20000);return say('What is the research topic?')}
+  if(/^(?:show|open|list)(?:\s+(?:my|all))?\s+research$/i.test(c)){resFilter='';$('#resQ').value='';go('research');renderResearch();return say(`You have ${db.research.length} research entr${db.research.length===1?'y':'ies'}.`+(db.research[0]?` The latest is ${db.research[0].title}.`:''))}
+  if(m=c.match(/^(?:search|find)\s+research(?:\s+for)?\s+(.+)/i)){resFilter=m[1];$('#resQ').value=m[1];go('research');renderResearch();const n=db.research.filter(r=>[r.title,r.notes,(r.tags||[]).join(' ')].join(' ').toLowerCase().includes(m[1].toLowerCase())).length;return say(`I found ${n} research entr${n===1?'y':'ies'} matching ${m[1]}.`)}
+  if(m=c.match(/^delete\s+research\s+(.+)/i)){const r=findBy(db.research,m[1]);if(!r)return say('I could not find that research.');memory.remove('research',r.id);return say('Research deleted.')}
+  if(m=c.match(/^(?:(?:add|save|new)\s+)?research(?:\s+(?:on|about))?\s+(.+)/i)){memory.add('research',{title:m[1],url:'',notes:'',tags:[]});return say(`Research saved: ${m[1]}.`)}
   if(/^add\s+task$/i.test(c)){awaiting='task';awaitT=setTimeout(()=>awaiting=null,20000);return say('What is the task?')}
   const lvl=p=>p==='urgent'?'high':p;
   if(m=c.match(/^(?:add|save|create|take|new)\s+(?:a\s+)?note(?:\s+(?:that|about))?\s+(.+)/i)){memory.add('notes',{text:m[1]});return say('I have saved your note.')}
@@ -356,7 +398,7 @@ function run(input){
   if(m=c.match(/^(?:complete|finish|mark(?:\s+done)?|done\s+with)\s+task\s+(.+)/i)){const t=findBy(sortedTasks(),m[1]);if(!t)return say('I could not find that task.');memory.edit('tasks',t.id,{done:true});return say('Task completed.')}
   if(m=c.match(/^delete\s+task\s+(.+)/i)){const t=findBy(sortedTasks(),m[1]);if(!t)return say('I could not find that task.');memory.remove('tasks',t.id);return say('Task deleted.')}
   if(/^(?:show|open|list|read)(?:\s+(?:my|all))?\s+tasks?$/i.test(c)){go('tasks');const o=db.tasks.filter(t=>!t.done),top=sortedTasks().find(t=>!t.done);return say(`You have ${o.length} open task${o.length===1?'':'s'}.`+(top?` Top priority: ${top.text}`:''))}
-  if(m=c.match(/^(?:go\s+to|open|show)\s+(home|memory|notes|tasks|voice|settings)$/i)){go(m[1]==='notes'?'memory':m[1].toLowerCase());return say('Opening '+m[1]+'.')}
+  if(m=c.match(/^(?:go\s+to|open|show)\s+(home|memory|notes|tasks|research|voice|settings)$/i)){go(m[1]==='notes'?'memory':m[1].toLowerCase());return say('Opening '+m[1]+'.')}
   if(/^(?:mute|be quiet)$/i.test(c)){reply(input,'Muted.');return setMute(true)}
   if(/^unmute$/i.test(c)){setMute(false);return say('Voice is back on.')}
   if(/^(?:what(?:'s| is) the )?time$/i.test(c))return say('It is '+new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})+'.');
@@ -379,4 +421,3 @@ renderAll();applySettings();
 </script>
 </body>
 </html>
- 
