@@ -78,6 +78,19 @@ body[data-state=listening] .reactor .core{fill:var(--ice);filter:drop-shadow(0 0
 body[data-state=speaking] .reactor .core{animation:beat .5s infinite alternate}
 body[data-state=muted] .reactor .core{fill:#4b5563;filter:none}
 @keyframes beat{to{transform:scale(1.25)}}
+.holo-wrap{--sz:min(300px,72vw);position:relative;width:var(--sz);height:var(--sz);margin:auto;cursor:pointer;animation:breathe 7s ease-in-out infinite;filter:drop-shadow(0 0 26px rgba(255,170,40,.35));transition:filter .5s}
+.holo-wrap.sm{--sz:min(200px,56vw)}
+.holo-wrap::before,.holo-wrap::after{content:"";position:absolute;border-radius:50%;pointer-events:none}
+.holo-wrap::before{inset:-3%;border:1px dashed rgba(94,225,255,.4);animation:spin 50s linear infinite reverse}
+.holo-wrap::after{inset:-9%;border:1px dotted rgba(255,106,60,.35);animation:spin 80s linear infinite}
+.holo{width:100%;height:100%;display:block;animation:spin 110s linear infinite}
+@keyframes breathe{50%{transform:scale(1.03)}}
+@keyframes glow{to{filter:brightness(1.25) drop-shadow(0 0 40px rgba(255,170,40,.8))}}
+body[data-state=listening] .holo-wrap{filter:hue-rotate(170deg) drop-shadow(0 0 30px rgba(255,170,40,.5))}
+body[data-state=listening] .holo{animation-duration:30s}
+body[data-state=speaking] .holo-wrap{animation:breathe 1.2s ease-in-out infinite,glow .7s ease-in-out infinite alternate}
+body[data-state=speaking] .holo{animation-duration:20s}
+body[data-state=muted] .holo-wrap{filter:grayscale(1) brightness(.55)}
 .hero{display:flex;gap:24px;align-items:center;flex-wrap:wrap;justify-content:center;padding:26px}
 .hero .txt{min-width:220px}
 .mic{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0}
@@ -123,11 +136,11 @@ nav button{flex:1;min-width:0;flex-direction:column;justify-content:center;gap:2
 <section id="home" class="on">
   <div id="banner" class="glass banner"><span>Sign in with Google so Jarvis can save your data to Drive.</span><button class="btn" id="bannerBtn">Connect Google Drive</button></div>
   <div class="glass hero">
-    <div class="reactor-slot" data-s="220"></div>
+    <div class="holo-wrap" role="button" tabindex="0" aria-label="Jarvis hologram. Tap to start or stop listening."><img class="holo" src="hologram.webp" alt="" onerror="this.replaceWith(reactor(220))"></div>
     <div class="txt">
       <div class="muted" id="greet"></div>
       <div class="big" id="clock"></div>
-      <p class="muted" style="margin-top:8px">Say “Jarvis, add note blockchain idea”.</p>
+      <p class="muted" style="margin-top:8px">Tap the hologram to start or stop listening. Say “Jarvis, add note blockchain idea”.</p>
     </div>
   </div>
   <div class="grid" style="margin-top:14px">
@@ -166,7 +179,7 @@ nav button{flex:1;min-width:0;flex-direction:column;justify-content:center;gap:2
 <section id="voice">
   <h1>Voice console</h1>
   <div class="glass hero">
-    <div class="reactor-slot" data-s="170"></div>
+    <div class="holo-wrap sm" role="button" tabindex="0" aria-label="Jarvis hologram. Tap to start or stop listening."><img class="holo" src="hologram.webp" alt="" onerror="this.replaceWith(reactor(170))"></div>
     <div class="txt">
       <div class="mic">
         <button class="btn ice" id="listenBtn" aria-pressed="false">Start listening</button>
@@ -200,7 +213,7 @@ nav button{flex:1;min-width:0;flex-direction:column;justify-content:center;gap:2
     <label for="pitch">Pitch</label><input id="pitch" type="range" min=".5" max="1.5" step=".05">
     <div class="row" style="margin:14px 0 0"><button class="btn" id="jvPreset">Jarvis voice preset</button><button class="btn ghost" id="testVoice">Test voice</button></div>
   </div>
-<p class="muted" style="margin:14px 4px">Mars Jarvis v0.6 · phase two</p>
+<p class="muted" style="margin:14px 4px">Mars Jarvis v0.9 · phase two</p>
 </section>
 </main>
 </div>
@@ -341,8 +354,8 @@ $('#taskAdd').onclick=addTask;$('#taskIn').onkeydown=e=>{if(e.key==='Enter')addT
 
 /* ---------- speech out ---------- */
 let speaking=false;
-function britishVoice(){const L=speechSynthesis.getVoices().filter(v=>/^en[-_]GB/i.test(v.lang));return L.find(v=>/male|daniel|george|ryan|arthur|gbb|gbd|rjs/i.test(v.name)&&!/female/i.test(v.name))||L[0]}
-function voices(){const s=$('#voiceSel');s.replaceChildren(h('option',{value:''},'System default'));speechSynthesis.getVoices().forEach(v=>s.append(h('option',{value:v.name,selected:v.name===db.settings.voice},`${v.name} (${v.lang})`)))}
+function britishVoice(){if(!('speechSynthesis' in window))return;const L=speechSynthesis.getVoices().filter(v=>/^en[-_]GB/i.test(v.lang));return L.find(v=>/male|daniel|george|ryan|arthur|gbb|gbd|rjs/i.test(v.name)&&!/female/i.test(v.name))||L[0]}
+function voices(){if(!('speechSynthesis' in window))return;const s=$('#voiceSel');s.replaceChildren(h('option',{value:''},'System default'));speechSynthesis.getVoices().forEach(v=>s.append(h('option',{value:v.name,selected:v.name===db.settings.voice},`${v.name} (${v.lang})`)))}
 if('speechSynthesis' in window){speechSynthesis.onvoiceschanged=voices;voices()}
 function speak(t){
   if(!('speechSynthesis' in window)||db.settings.muted)return;
@@ -351,6 +364,8 @@ function speak(t){
   u.onstart=()=>{speaking=true;setState()};u.onend=u.onerror=()=>{speaking=false;setState()};speechSynthesis.speak(u)}
 function setState(){document.body.dataset.state=db.settings.muted&&!listening?'muted':speaking?'speaking':listening?'listening':'idle';
   $('#stateLabel').textContent={idle:'Idle',listening:'Listening',speaking:'Speaking',muted:'Muted'}[document.body.dataset.state]}
+
+$$('.holo-wrap').forEach(w=>{w.addEventListener('click',()=>$('#listenBtn').click());w.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();$('#listenBtn').click()}})});
 
 /* ---------- speech in ---------- */
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
@@ -371,7 +386,7 @@ const pttOff=()=>{if(!ptt)return;pttT=setTimeout(()=>{ptt=false;$('#pttBtn').cla
 $('#pttBtn').addEventListener('pointerdown',pttOn);['pointerup','pointerleave','pointercancel'].forEach(ev=>$('#pttBtn').addEventListener(ev,pttOff));
 $('#pttBtn').addEventListener('contextmenu',e=>e.preventDefault());
 $('#muteBtn').onclick=()=>setMute(!db.settings.muted);
-function setMute(m){db.settings.muted=m;if(m)speechSynthesis.cancel();$('#muteBtn').textContent=m?'Unmute voice':'Mute voice';$('#muteBtn').setAttribute('aria-pressed',m);memory.save();setState()}
+function setMute(m){db.settings.muted=m;if(m){if('speechSynthesis' in window)speechSynthesis.cancel()}$('#muteBtn').textContent=m?'Unmute voice':'Mute voice';$('#muteBtn').setAttribute('aria-pressed',m);memory.save();setState()}
 let armed=false,armT=null;
 function beep(){try{const a=new(window.AudioContext||window.webkitAudioContext)(),o=a.createOscillator(),g=a.createGain();o.frequency.value=880;g.gain.value=.06;o.connect(g);g.connect(a.destination);o.start();o.stop(a.currentTime+.12)}catch{}}
 function heard(raw){
@@ -379,7 +394,7 @@ function heard(raw){
   if(i<0){if(ptt||awaiting||armed){armed=false;clearTimeout(armT);$('#heard').textContent='“'+t+'”';run(t)}return}
   const cmd=t.slice(i+wake.length).replace(/^[\s,.:!]+/,'');
   if(cmd){armed=false;$('#heard').textContent='“'+t+'”';run(cmd)}
-  else{armed=true;clearTimeout(armT);armT=setTimeout(()=>armed=false,8000);beep();$('#heard').textContent='Yes? Say your command…'}}
+  else{armed=true;clearTimeout(armT);armT=setTimeout(()=>armed=false,10000);beep();$('#heard').textContent='Yes? Say your command…'}}
 
 /* ---------- command engine ---------- */
 function reply(heardTxt,text){speak(text);toast(text);db.conversations.unshift({id:crypto.randomUUID(),created:Date.now(),heard:heardTxt,reply:text});db.conversations=db.conversations.slice(0,200);memory.save();renderHist();renderAll()}
