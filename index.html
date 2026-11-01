@@ -326,7 +326,7 @@ $('#muteBtn').onclick=()=>setMute(!db.settings.muted);
 function setMute(m){db.settings.muted=m;if(m)speechSynthesis.cancel();$('#muteBtn').textContent=m?'Unmute voice':'Mute voice';$('#muteBtn').setAttribute('aria-pressed',m);memory.save();setState()}
 function heard(raw){
   if(speaking)return;const t=raw.trim(),wake=(db.settings.wake||'jarvis').toLowerCase(),i=t.toLowerCase().indexOf(wake);
-  if(i<0){if(ptt){$('#heard').textContent='“'+t+'”';run(t)}return}
+  if(i<0){if(ptt||awaiting){$('#heard').textContent='“'+t+'”';run(t)}return}
   const cmd=t.slice(i+wake.length).replace(/^[\s,.:!]+/,'');$('#heard').textContent='“'+t+'”';
   cmd?run(cmd):reply(t,'Yes?')}
 
@@ -334,8 +334,13 @@ function heard(raw){
 function reply(heardTxt,text){speak(text);toast(text);db.conversations.unshift({id:crypto.randomUUID(),created:Date.now(),heard:heardTxt,reply:text});db.conversations=db.conversations.slice(0,200);memory.save();renderHist();renderAll()}
 const norm=s=>s.replace(/[.!?]+$/,'').trim();
 const findBy=(list,q)=>/^\d+$/.test(q)?list[+q-1]:list.find(x=>x.text.toLowerCase().includes(q.toLowerCase()));
+let awaiting=null,awaitT=null;
+const fix=s=>s.replace(/^(?:had|ad|at|and|eight|add)\s+(?:a\s+)?(?:not|nut|node|nope|note|memory note)\b/i,'add note').replace(/^adnut\b/i,'add note').replace(/^(?:had|ad|at|and|add)\s+(?:a\s+)?(?:tusk|desk|tasks?)\b/i,'add task').replace(/^(?:save|safe)\s+(?:the\s+)?(?:not|nut|node|note)\b/i,'save note');
 function run(input){
-  const c=norm(input),say=t=>reply(input,t);let m;
+  if(awaiting){const k=awaiting;awaiting=null;clearTimeout(awaitT);const t=norm(input);if(k==='note'){memory.add('notes',{text:t});return reply(input,'I have saved your note.')}memory.add('tasks',{text:t,priority:'medium',done:false});return reply(input,'Task added.')}
+  const c=fix(norm(input)),say=t=>reply(input,t);let m;
+  if(/^(?:add|save)\s+note$/i.test(c)){awaiting='note';awaitT=setTimeout(()=>awaiting=null,20000);return say('What should the note say?')}
+  if(/^add\s+task$/i.test(c)){awaiting='task';awaitT=setTimeout(()=>awaiting=null,20000);return say('What is the task?')}
   const lvl=p=>p==='urgent'?'high':p;
   if(m=c.match(/^(?:add|save|create|take|new)\s+(?:a\s+)?note(?:\s+(?:that|about))?\s+(.+)/i)){memory.add('notes',{text:m[1]});return say('I have saved your note.')}
   if(m=c.match(/^(?:search|find)\s+notes?(?:\s+for)?\s+(.+)/i)){noteFilter=m[1];$('#noteQ').value=m[1];go('memory');renderNotes();const n=db.notes.filter(x=>x.text.toLowerCase().includes(m[1].toLowerCase())).length;return say(`I found ${n} note${n===1?'':'s'} matching ${m[1]}.`)}
