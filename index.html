@@ -7,13 +7,13 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Rajdhani:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#06080c;--ink:#e8eef5;--muted:#7f8c9c;--mars:#ff6a3c;--ice:#5ee1ff;--ok:#6dffb0;--glass:rgba(255,255,255,.05);--line:rgba(255,255,255,.11);--r:16px;
+:root{--bg:#040714;--ink:#e8eef5;--muted:#7f8c9c;--mars:#ff6a3c;--ice:#5ee1ff;--ok:#6dffb0;--glass:rgba(255,255,255,.05);--line:rgba(255,255,255,.11);--r:16px;
 --disp:'Orbitron','Segoe UI',sans-serif;--ui:'Rajdhani','Segoe UI',system-ui,sans-serif}
 *{box-sizing:border-box;margin:0}
 html,body{height:100%;max-width:100vw;overflow-x:hidden}
 main,section,.glass{min-width:0;max-width:100%}
 body{font:500 17px/1.45 var(--ui);color:var(--ink);background:var(--bg);overflow:hidden;
-background-image:radial-gradient(60% 50% at 85% 0%,rgba(255,106,60,.18),transparent),radial-gradient(50% 50% at 0% 100%,rgba(94,225,255,.12),transparent),
+background-image:radial-gradient(55% 38% at 90% 0%,rgba(255,130,80,.16),transparent),radial-gradient(75% 50% at 8% 100%,rgba(40,80,255,.40),transparent),radial-gradient(60% 45% at 85% 58%,rgba(120,60,255,.20),transparent),
 linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);background-size:auto,auto,44px 44px,44px 44px}
 button,input,select,textarea{font:inherit;color:inherit}
 button,nav,.hero,.reactor{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
@@ -78,19 +78,10 @@ body[data-state=listening] .reactor .core{fill:var(--ice);filter:drop-shadow(0 0
 body[data-state=speaking] .reactor .core{animation:beat .5s infinite alternate}
 body[data-state=muted] .reactor .core{fill:#4b5563;filter:none}
 @keyframes beat{to{transform:scale(1.25)}}
-.holo-wrap{--sz:min(300px,72vw);position:relative;width:var(--sz);height:var(--sz);margin:auto;cursor:pointer;animation:breathe 7s ease-in-out infinite;filter:drop-shadow(0 0 26px rgba(255,170,40,.35));transition:filter .5s}
-.holo-wrap.sm{--sz:min(200px,56vw)}
-.holo-wrap::before,.holo-wrap::after{content:"";position:absolute;border-radius:50%;pointer-events:none}
-.holo-wrap::before{inset:-3%;border:1px dashed rgba(94,225,255,.4);animation:spin 50s linear infinite reverse}
-.holo-wrap::after{inset:-9%;border:1px dotted rgba(255,106,60,.35);animation:spin 80s linear infinite}
-.holo{width:100%;height:100%;display:block;animation:spin 110s linear infinite}
-@keyframes breathe{50%{transform:scale(1.03)}}
-@keyframes glow{to{filter:brightness(1.25) drop-shadow(0 0 40px rgba(255,170,40,.8))}}
-body[data-state=listening] .holo-wrap{filter:hue-rotate(170deg) drop-shadow(0 0 30px rgba(255,170,40,.5))}
-body[data-state=listening] .holo{animation-duration:30s}
-body[data-state=speaking] .holo-wrap{animation:breathe 1.2s ease-in-out infinite,glow .7s ease-in-out infinite alternate}
-body[data-state=speaking] .holo{animation-duration:20s}
-body[data-state=muted] .holo-wrap{filter:grayscale(1) brightness(.55)}
+.holo-wrap{--sz:min(340px,82vw);width:var(--sz);height:var(--sz);margin:auto;cursor:pointer}
+.holo-wrap.sm{--sz:min(220px,60vw)}
+.holo-cv{width:100%;height:100%;display:block}
+.hero{background:radial-gradient(circle at 50% 38%,rgba(40,100,255,.24),transparent 62%),var(--glass)}
 .hero{display:flex;gap:24px;align-items:center;flex-wrap:wrap;justify-content:center;padding:26px}
 .hero .txt{min-width:220px}
 .mic{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0}
@@ -136,7 +127,7 @@ nav button{flex:1;min-width:0;flex-direction:column;justify-content:center;gap:2
 <section id="home" class="on">
   <div id="banner" class="glass banner"><span>Sign in with Google so Jarvis can save your data to Drive.</span><button class="btn" id="bannerBtn">Connect Google Drive</button></div>
   <div class="glass hero">
-    <div class="holo-wrap" role="button" tabindex="0" aria-label="Jarvis hologram. Tap to start or stop listening."><img class="holo" src="hologram.webp" alt="" onerror="this.replaceWith(reactor(220))"></div>
+    <div class="holo-wrap" role="button" tabindex="0" aria-label="Jarvis hologram. Tap to start or stop listening."><canvas class="holo-cv" aria-hidden="true"></canvas></div>
     <div class="txt">
       <div class="muted" id="greet"></div>
       <div class="big" id="clock"></div>
@@ -179,7 +170,7 @@ nav button{flex:1;min-width:0;flex-direction:column;justify-content:center;gap:2
 <section id="voice">
   <h1>Voice console</h1>
   <div class="glass hero">
-    <div class="holo-wrap sm" role="button" tabindex="0" aria-label="Jarvis hologram. Tap to start or stop listening."><img class="holo" src="hologram.webp" alt="" onerror="this.replaceWith(reactor(170))"></div>
+    <div class="holo-wrap sm" role="button" tabindex="0" aria-label="Jarvis hologram. Tap to start or stop listening."><canvas class="holo-cv" aria-hidden="true"></canvas></div>
     <div class="txt">
       <div class="mic">
         <button class="btn ice" id="listenBtn" aria-pressed="false">Start listening</button>
@@ -213,7 +204,7 @@ nav button{flex:1;min-width:0;flex-direction:column;justify-content:center;gap:2
     <label for="pitch">Pitch</label><input id="pitch" type="range" min=".5" max="1.5" step=".05">
     <div class="row" style="margin:14px 0 0"><button class="btn" id="jvPreset">Jarvis voice preset</button><button class="btn ghost" id="testVoice">Test voice</button></div>
   </div>
-<p class="muted" style="margin:14px 4px">Mars Jarvis v0.9 · phase two</p>
+<p class="muted" style="margin:14px 4px">Mars Jarvis v1.0 · phase two</p>
 </section>
 </main>
 </div>
@@ -447,6 +438,64 @@ $('#rate').onchange=e=>{db.settings.rate=+e.target.value;memory.save()};
 $('#voiceSel').onchange=e=>{db.settings.voice=e.target.value;memory.save();speak('Voice updated.')};
 $('#cid').value=localStorage.getItem('mj_cid')||'';
 $('#signIn').onclick=signIn;$('#signOut').onclick=()=>signOut();$('#bannerBtn').onclick=signIn;
+
+/* ---------- living hologram ---------- */
+(()=>{
+  const cvs=$$('.holo-cv');if(!cvs.length)return;
+  const N=900,P=[],XY=new Float32Array(N*3);for(let i=0;i<N;i++){const y=1-2*(i+.5)/N,r=Math.sqrt(1-y*y),a=i*2.399963;P.push([Math.cos(a)*r,y,Math.sin(a)*r,Math.random()*6.28])}
+  const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const COL={idle:[94,200,255],listening:[150,240,255],speaking:[190,225,255],muted:[105,115,130]},ORANGE=[255,120,70];
+  let C=[...COL.idle],E=.25,ang=0,last=0;
+  const rgba=(c,a)=>`rgba(${c[0]|0},${c[1]|0},${c[2]|0},${Math.max(0,Math.min(1,a))})`;
+  function arcs(g,cx,r,start,n,span,lw,col,a){g.lineWidth=lw;g.strokeStyle=rgba(col,a);for(let i=0;i<n;i++){const a0=start+i*6.2832/n;g.beginPath();g.arc(cx,cx,r,a0,a0+span);g.stroke()}}
+  function draw(c,t,st){
+    if(!c.offsetParent)return;
+    const d=Math.min(devicePixelRatio||1,2),w=Math.round(c.getBoundingClientRect().width*d);if(!w)return;if(c.width!==w){c.width=w;c.height=w}
+    const g=c.getContext('2d'),W=w,cx=W/2,R=W/2*.94,u=W/340;
+    g.clearRect(0,0,W,W);
+    const pulse=1+E*.03*Math.sin(t*(st==='speaking'?13:3.2));
+    g.save();g.translate(cx,cx);g.scale(pulse,pulse);g.translate(-cx,-cx);
+    // glow
+    const gr=g.createRadialGradient(cx,cx,0,cx,cx,R);gr.addColorStop(0,rgba(C,.20+E*.25));gr.addColorStop(.6,rgba(C,.05));gr.addColorStop(1,rgba(C,0));
+    g.fillStyle=gr;g.fillRect(0,0,W,W);
+    // sphere of points
+    const ca=Math.cos(ang),sa=Math.sin(ang),tilt=.38,ct=Math.cos(tilt),stl=Math.sin(tilt),Rs=R*.74;
+    for(let i=0;i<N;i++){const p=P[i];
+      const x=p[0]*ca+p[2]*sa,z=-p[0]*sa+p[2]*ca,y=p[1]*ct-z*stl,z2=p[1]*stl+z*ct,dep=(z2+1)/2;
+      XY[i*3]=cx+x*Rs;XY[i*3+1]=cx+y*Rs;XY[i*3+2]=dep;
+      const tw=.7+.3*Math.sin(t*2+p[3]),al=(.18+.82*dep)*tw,sz=(.9+2*dep)*d;
+      g.fillStyle=rgba(C,al);g.fillRect(XY[i*3]-sz/2,XY[i*3+1]-sz/2,sz,sz);
+    }
+    g.strokeStyle=rgba(C,.2+E*.15);g.lineWidth=.7*d;g.beginPath();const lim=Rs*.2;
+    for(let i=0;i<N-55;i+=2)for(const o of [34,55]){const j=i+o;if(XY[i*3+2]>.45&&XY[j*3+2]>.45){const dx=XY[i*3]-XY[j*3],dy=XY[i*3+1]-XY[j*3+1];if(dx*dx+dy*dy<lim*lim){g.moveTo(XY[i*3],XY[i*3+1]);g.lineTo(XY[j*3],XY[j*3+1])}}}
+    g.stroke();
+    // rings
+    g.lineCap='butt';
+    g.lineWidth=1*d;g.strokeStyle=rgba(C,.28);g.beginPath();g.arc(cx,cx,R,0,6.2832);g.stroke();
+    for(let i=0;i<72;i++){const a=i*.0873+ang*.3,l=i%6?3:8;g.strokeStyle=rgba(C,i%6?.25:.5);g.lineWidth=1*d;g.beginPath();g.moveTo(cx+Math.cos(a)*R,cx+Math.sin(a)*R);g.lineTo(cx+Math.cos(a)*(R-l*u*d),cx+Math.sin(a)*(R-l*u*d));g.stroke()}
+    arcs(g,cx,R*.92,ang*1.1,3,1.25,3*d*u,C,.8);
+    g.setLineDash([3*d*u,9*d*u]);g.lineDashOffset=-t*18*d;arcs(g,cx,R*.85,0,1,6.2832,1.5*d*u,C,.6);g.setLineDash([]);
+    arcs(g,cx,R*.66,-ang*1.7,2,2.1,3.5*d*u,C,.85);
+    g.setLineDash([2*d*u,5*d*u]);g.lineDashOffset=t*10*d;arcs(g,cx,R*.48,0,1,6.2832,1*d*u,C,.45);g.setLineDash([]);
+    // pulse waves
+    const rate=st==='speaking'?.9:st==='listening'?.55:.2,wc=st==='speaking'?ORANGE:C;
+    for(let k=0;k<3;k++){const ph=(t*rate+k/3)%1;g.lineWidth=(1+2*(1-ph))*d;g.strokeStyle=rgba(wc,(1-ph)*(.12+E*.5));g.beginPath();g.arc(cx,cx,R*(.3+.7*ph),0,6.2832);g.stroke()}
+    // title
+    g.textAlign='center';g.textBaseline='middle';g.font=`700 ${Math.round(W*.072)}px Orbitron,'Segoe UI',sans-serif`;if('letterSpacing' in g)g.letterSpacing=Math.round(W*.01)+'px';
+    g.shadowColor=rgba(C,.9);g.shadowBlur=(10+E*18)*d;g.fillStyle=`rgba(255,255,255,${.82+E*.18})`;g.fillText('J.A.R.V.I.S',cx,cx);g.shadowBlur=0;
+    g.strokeStyle=rgba(C,.5);g.lineWidth=1*d;g.beginPath();g.moveTo(cx-R*.62,cx);g.lineTo(cx-R*.5,cx);g.moveTo(cx+R*.5,cx);g.lineTo(cx+R*.62,cx);g.stroke();
+    g.restore();
+  }
+  function frame(now){
+    const t=now/1000,dt=Math.min(.05,t-last||.016);last=t;
+    const st=document.body.dataset.state||'idle';
+    const tE=st==='speaking'?.55+.45*Math.abs(Math.sin(t*7)*Math.sin(t*3.1+1)):st==='listening'?.65:st==='muted'?.08:.25;
+    E+=(tE-E)*Math.min(1,dt*8);
+    const tc=COL[st]||COL.idle;for(let i=0;i<3;i++)C[i]+=(tc[i]-C[i])*Math.min(1,dt*4);
+    ang+=dt*(st==='speaking'?.8:st==='listening'?.55:st==='muted'?.08:.22);
+    cvs.forEach(c=>draw(c,t,st));requestAnimationFrame(frame)}
+  if(reduce)cvs.forEach(c=>draw(c,2,'idle'));else requestAnimationFrame(frame);
+})();
 
 /* ---------- boot ---------- */
 const gs=document.createElement('script');gs.src='https://accounts.google.com/gsi/client';gs.async=true;gs.onload=initAuth;document.head.append(gs);
