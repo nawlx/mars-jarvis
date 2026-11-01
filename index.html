@@ -90,10 +90,12 @@ dialog{margin:auto;border:1px solid var(--line);border-radius:var(--r);backgroun
 dialog::backdrop{background:rgba(0,0,0,.6);backdrop-filter:blur(4px)}
 @media(max-width:760px){
 body{overflow:auto}
-#app{grid-template-columns:1fr;grid-template-rows:1fr auto;padding:8px;height:100%}
+#app{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto;padding:8px;height:100%}
+main{min-width:0}
 nav{order:2;flex-direction:row;padding:6px;justify-content:space-around;position:sticky;bottom:0}
 nav .brand,nav .sp,nav .nstat{display:none}
-nav button{flex-direction:column;gap:2px;font-size:13px;padding:6px 8px}
+nav{gap:2px}
+nav button{flex:1;min-width:0;flex-direction:column;justify-content:center;gap:2px;font-size:12px;padding:6px 2px;text-align:center}
 .item{flex-wrap:wrap}
 }
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
@@ -361,11 +363,14 @@ const pttOff=()=>{if(!ptt)return;pttT=setTimeout(()=>{ptt=false;$('#pttBtn').cla
 $('#pttBtn').addEventListener('pointerdown',pttOn);['pointerup','pointerleave','pointercancel'].forEach(ev=>$('#pttBtn').addEventListener(ev,pttOff));
 $('#muteBtn').onclick=()=>setMute(!db.settings.muted);
 function setMute(m){db.settings.muted=m;if(m)speechSynthesis.cancel();$('#muteBtn').textContent=m?'Unmute voice':'Mute voice';$('#muteBtn').setAttribute('aria-pressed',m);memory.save();setState()}
+let armed=false,armT=null;
+function beep(){try{const a=new(window.AudioContext||window.webkitAudioContext)(),o=a.createOscillator(),g=a.createGain();o.frequency.value=880;g.gain.value=.06;o.connect(g);g.connect(a.destination);o.start();o.stop(a.currentTime+.12)}catch{}}
 function heard(raw){
   if(speaking)return;const t=raw.trim(),wake=(db.settings.wake||'jarvis').toLowerCase(),i=t.toLowerCase().indexOf(wake);
-  if(i<0){if(ptt||awaiting){$('#heard').textContent='“'+t+'”';run(t)}return}
-  const cmd=t.slice(i+wake.length).replace(/^[\s,.:!]+/,'');$('#heard').textContent='“'+t+'”';
-  cmd?run(cmd):reply(t,'Yes?')}
+  if(i<0){if(ptt||awaiting||armed){armed=false;clearTimeout(armT);$('#heard').textContent='“'+t+'”';run(t)}return}
+  const cmd=t.slice(i+wake.length).replace(/^[\s,.:!]+/,'');
+  if(cmd){armed=false;$('#heard').textContent='“'+t+'”';run(cmd)}
+  else{armed=true;clearTimeout(armT);armT=setTimeout(()=>armed=false,8000);beep();$('#heard').textContent='Yes? Say your command…'}}
 
 /* ---------- command engine ---------- */
 function reply(heardTxt,text){speak(text);toast(text);db.conversations.unshift({id:crypto.randomUUID(),created:Date.now(),heard:heardTxt,reply:text});db.conversations=db.conversations.slice(0,200);memory.save();renderHist();renderAll()}
