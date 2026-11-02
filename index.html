@@ -79,6 +79,12 @@ body[data-state=speaking] .reactor .core{animation:beat .5s infinite alternate}
 body[data-state=muted] .reactor .core{fill:#4b5563;filter:none}
 @keyframes beat{to{transform:scale(1.25)}}
 .holo-wrap{--sz:min(340px,82vw);width:var(--sz);height:var(--sz);margin:auto;cursor:pointer}
+.holo-wrap.sb{--sz:min(300px,78vw);filter:brightness(.72);cursor:default;margin:0 0 8px}
+#standby{position:fixed;inset:0;z-index:8;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;padding:20px}
+#standby[hidden]{display:none}
+#sbClock{font:700 44px var(--disp);color:rgba(232,238,245,.85)}
+#sbText{color:var(--ice);min-height:28px;font-size:19px;max-width:90vw}
+#sbHint{color:var(--muted);font-size:14px}
 .holo-wrap.sm{--sz:min(220px,60vw)}
 .holo-cv{width:100%;height:100%;display:block}
 .hero{background:radial-gradient(circle at 50% 38%,rgba(40,100,255,.24),transparent 62%),var(--glass)}
@@ -175,6 +181,7 @@ nav button{flex:1;min-width:0;flex-direction:column;justify-content:center;gap:2
       <div class="mic">
         <button class="btn ice" id="listenBtn" aria-pressed="false">Start listening</button>
         <button class="btn" id="pttBtn">Hold to talk</button>
+        <button class="btn ghost" id="sbBtn">Standby mode</button>
         <button class="btn ghost" id="muteBtn" aria-pressed="false">Mute voice</button>
       </div>
       <div id="heard" aria-live="polite">Waiting for the wake word “jarvis”.</div>
@@ -206,6 +213,12 @@ nav button{flex:1;min-width:0;flex-direction:column;justify-content:center;gap:2
     <label style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="gWeb" style="width:auto"> Let Jarvis search the web when researching</label>
   </div>
   <div class="glass card" style="margin-top:14px">
+    <h2>Always listening</h2>
+    <p class="muted">Phones pause the microphone when the screen is off or the browser is in the background, so Jarvis listens while the app is open. Standby mode keeps the screen on with a dark display, ideal on a stand or charger.</p>
+    <label style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="aAuto" style="width:auto"> Start listening when the app opens</label>
+    <label style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="aAwake" style="width:auto"> Keep the screen on while listening</label>
+  </div>
+  <div class="glass card" style="margin-top:14px">
     <h2>Voice</h2>
     <label for="wake">Wake word</label><input id="wake">
     <label for="voiceSel">Voice</label><select id="voiceSel"></select>
@@ -213,7 +226,7 @@ nav button{flex:1;min-width:0;flex-direction:column;justify-content:center;gap:2
     <label for="pitch">Pitch</label><input id="pitch" type="range" min=".5" max="1.5" step=".05">
     <div class="row" style="margin:14px 0 0"><button class="btn" id="jvPreset">Jarvis voice preset</button><button class="btn ghost" id="testVoice">Test voice</button></div>
   </div>
-<p class="muted" style="margin:14px 4px">Mars Jarvis v1.4 · phase two</p>
+<p class="muted" style="margin:14px 4px">Mars Jarvis v1.5 · phase two</p>
 </section>
 </main>
 </div>
@@ -221,6 +234,7 @@ nav button{flex:1;min-width:0;flex-direction:column;justify-content:center;gap:2
 <dialog id="rdlg"><h2>Edit research</h2>
 <label for="rdTitle">Title</label><input id="rdTitle"><label for="rdUrl">Link</label><input id="rdUrl"><label for="rdNotes">Notes</label><textarea id="rdNotes"></textarea><label for="rdTags">Tags</label><input id="rdTags">
 <div class="row" style="margin:14px 0 0;justify-content:flex-end"><button class="btn ghost" id="rdCancel">Cancel</button><button class="btn" id="rdSave">Save changes</button></div></dialog>
+<div id="standby" hidden><div class="holo-wrap sb"><canvas class="holo-cv" aria-hidden="true"></canvas></div><div id="sbClock"></div><div id="sbText">Say “jarvis”</div><div id="sbHint">Tap anywhere to exit</div></div>
 <div id="toast" class="glass"></div>
 
 <script>
@@ -354,7 +368,7 @@ const addTask=()=>{const v=$('#taskIn').value.trim();if(v){memory.add('tasks',{t
 $('#taskAdd').onclick=addTask;$('#taskIn').onkeydown=e=>{if(e.key==='Enter')addTask()};
 
 /* ---------- speech out ---------- */
-let speaking=false;
+let speaking=false,speakEnd=0,sbOpen=false,wl=null;
 function britishVoice(){if(!('speechSynthesis' in window))return;const L=speechSynthesis.getVoices().filter(v=>/^en[-_]GB/i.test(v.lang));return L.find(v=>/male|daniel|george|ryan|arthur|gbb|gbd|rjs/i.test(v.name)&&!/female/i.test(v.name))||L[0]}
 function voices(){if(!('speechSynthesis' in window))return;const s=$('#voiceSel');s.replaceChildren(h('option',{value:''},'System default'));speechSynthesis.getVoices().forEach(v=>s.append(h('option',{value:v.name,selected:v.name===db.settings.voice},`${v.name} (${v.lang})`)))}
 if('speechSynthesis' in window){speechSynthesis.onvoiceschanged=voices;voices()}
@@ -362,12 +376,12 @@ function speak(t){
   if(!('speechSynthesis' in window)||db.settings.muted)return;
   speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);
   let v=speechSynthesis.getVoices().find(v=>v.name===db.settings.voice);if(!v&&!db.settings.voice)v=britishVoice();if(v){u.voice=v;u.lang=v.lang}u.rate=+db.settings.rate||1;u.pitch=+db.settings.pitch||1;
-  u.onstart=()=>{speaking=true;setState()};u.onend=u.onerror=()=>{speaking=false;setState()};speechSynthesis.speak(u)}
+  u.onstart=()=>{speaking=true;setState()};u.onend=u.onerror=()=>{speaking=false;speakEnd=Date.now();setState()};speechSynthesis.speak(u)}
 let thinking=false;
 function setState(){document.body.dataset.state=thinking?'thinking':db.settings.muted&&!listening?'muted':speaking?'speaking':listening?'listening':'idle';
   $('#stateLabel').textContent={idle:'Idle',listening:'Listening',speaking:'Speaking',muted:'Muted',thinking:'Thinking'}[document.body.dataset.state]}
 
-$$('.holo-wrap').forEach(w=>{w.addEventListener('click',()=>$('#listenBtn').click());w.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();$('#listenBtn').click()}})});
+$$('.holo-wrap:not(.sb)').forEach(w=>{w.addEventListener('click',()=>$('#listenBtn').click());w.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();$('#listenBtn').click()}})});
 
 /* ---------- speech in ---------- */
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
@@ -377,10 +391,10 @@ function startRec(){
   if(!SR||rec)return;rec=new SR();rec.continuous=true;rec.interimResults=false;rec.lang='en-US';
   rec.onresult=e=>{let live='';for(let i=e.resultIndex;i<e.results.length;i++){const r=e.results[i];if(r.isFinal)heard(r[0].transcript);else live+=r[0].transcript}if(live&&!armed)$('#heard').textContent='… '+live};
   rec.onerror=e=>{if(e.error==='not-allowed'||e.error==='service-not-allowed'){listening=false;syncMic();toast('Microphone access was blocked.')}};
-  rec.onend=()=>{rec=null;if(listening||ptt)setTimeout(startRec,60)};
+  rec.onend=()=>{rec=null;if((listening||ptt)&&!document.hidden)setTimeout(startRec,60)};
   try{rec.start()}catch{rec=null}}
 function stopRec(){if(rec){const r=rec;rec=null;r.onend=null;r.stop()}}
-function syncMic(){const b=$('#listenBtn');b.textContent=listening?'Stop listening':'Start listening';b.setAttribute('aria-pressed',listening);b.classList.toggle('on',listening);setState()}
+function syncMic(){const b=$('#listenBtn');b.textContent=listening?'Stop listening':'Start listening';b.setAttribute('aria-pressed',listening);b.classList.toggle('on',listening);setState();keepAwake(listening||sbOpen,sbOpen)}
 $('#listenBtn').onclick=()=>{listening=!listening;listening?startRec():(!ptt&&stopRec());syncMic();if(listening)$('#heard').textContent=`Listening for “${db.settings.wake}”…`};
 let pttT0=0;
 const pttOn=e=>{e.preventDefault();pttT0=Date.now();try{e.currentTarget.setPointerCapture(e.pointerId)}catch{}clearTimeout(pttT);ptt=true;$('#pttBtn').classList.add('on');startRec();setState();document.body.dataset.state='listening'};
@@ -392,7 +406,7 @@ function setMute(m){db.settings.muted=m;if(m){if('speechSynthesis' in window)spe
 let armed=false,armT=null;
 function beep(){try{const a=new(window.AudioContext||window.webkitAudioContext)(),o=a.createOscillator(),g=a.createGain();o.frequency.value=880;g.gain.value=.06;o.connect(g);g.connect(a.destination);o.start();o.stop(a.currentTime+.12)}catch{}}
 function heard(raw){
-  if(speaking||thinking)return;const t=(raw||'').trim();if(!t)return;const wake=(db.settings.wake||'jarvis').toLowerCase(),i=t.toLowerCase().indexOf(wake);
+  if(speaking||thinking||Date.now()-speakEnd<800)return;const t=(raw||'').trim();if(!t)return;const wake=(db.settings.wake||'jarvis').toLowerCase(),i=t.toLowerCase().indexOf(wake);
   if(i<0){if(ptt||awaiting||armed){armed=false;clearTimeout(armT);$('#heard').textContent='“'+t+'”';run(t)}return}
   const cmd=t.slice(i+wake.length).replace(/^[\s,.:!]+/,'');
   if(cmd){armed=false;$('#heard').textContent='“'+t+'”';run(cmd)}
@@ -434,6 +448,8 @@ function run(input){
   if(m=c.match(/^delete\s+task\s+(.+)/i)){const t=findBy(sortedTasks(),m[1]);if(!t)return say('I could not find that task.');memory.remove('tasks',t.id);return say('Task deleted.')}
   if(/^(?:show|open|list|read)(?:\s+(?:my|all))?\s+tasks?$/i.test(c)){go('tasks');const o=db.tasks.filter(t=>!t.done),top=sortedTasks().find(t=>!t.done);return say(`You have ${o.length} open task${o.length===1?'':'s'}.`+(top?` Top priority: ${top.text}`:''))}
   if(m=c.match(/^(?:go\s+to|open|show)\s+(home|memory|notes|tasks|research|voice|settings)$/i)){go(m[1]==='notes'?'memory':m[1].toLowerCase());return say('Opening '+m[1]+'.')}
+  if(/^(?:standby|stand by|go to standby|standby mode|sleep mode)$/i.test(c)){reply(input,'Standing by.');return openStandby()}
+  if(/^(?:wake up|exit standby)$/i.test(c)){closeStandby();return say('Welcome back.')}
   if(/^(?:mute|be quiet)$/i.test(c)){reply(input,'Muted.');return setMute(true)}
   if(/^unmute$/i.test(c)){setMute(false);return say('Voice is back on.')}
   if(/^(?:what(?:'s| is) the )?time$/i.test(c))return say('It is '+new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})+'.');
@@ -592,6 +608,24 @@ $('#signIn').onclick=signIn;$('#signOut').onclick=()=>signOut();$('#bannerBtn').
     cvs.forEach(c=>draw(c,t,st));requestAnimationFrame(frame)}
   if(reduce)cvs.forEach(c=>draw(c,2,'idle'));else requestAnimationFrame(frame);
 })();
+
+/* ---------- standby + always-on ---------- */
+async function keepAwake(on,force){try{
+  if(on&&(force||localStorage.getItem('mj_awake')!=='0')&&'wakeLock' in navigator){if(!wl){wl=await navigator.wakeLock.request('screen');wl.addEventListener('release',()=>{wl=null})}}
+  else if(!on&&wl){await wl.release();wl=null}}catch{}}
+const sb=$('#standby'),clockTxt=()=>new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+function openStandby(){if(!listening)$('#listenBtn').click();sbOpen=true;sb.hidden=false;$('#sbClock').textContent=clockTxt();$('#sbText').textContent=$('#heard').textContent;keepAwake(true,true);if(document.documentElement.requestFullscreen)document.documentElement.requestFullscreen().catch(()=>{})}
+function closeStandby(){sbOpen=false;sb.hidden=true;if(document.fullscreenElement)document.exitFullscreen().catch(()=>{});keepAwake(listening)}
+sb.addEventListener('click',closeStandby);$('#sbBtn').onclick=openStandby;
+new MutationObserver(()=>{$('#sbText').textContent=$('#heard').textContent}).observe($('#heard'),{childList:true,characterData:true,subtree:true});
+setInterval(()=>{if(sbOpen)$('#sbClock').textContent=clockTxt()},5000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&(listening||sbOpen)){keepAwake(true,sbOpen);if(!rec)startRec()}});
+setInterval(()=>{if(listening&&!rec&&!document.hidden)startRec()},4000);
+$('#aAuto').checked=localStorage.getItem('mj_auto')==='1';$('#aAwake').checked=localStorage.getItem('mj_awake')!=='0';
+$('#aAuto').onchange=e=>localStorage.setItem('mj_auto',e.target.checked?'1':'0');
+$('#aAwake').onchange=e=>{localStorage.setItem('mj_awake',e.target.checked?'1':'0');keepAwake(listening&&e.target.checked||sbOpen,sbOpen)};
+if(localStorage.getItem('mj_auto')==='1'&&SR){listening=true;syncMic();$('#heard').textContent='Listening for “'+(db.settings.wake||'jarvis')+'”…';startRec();
+  const kick=()=>{if(!rec)startRec();document.removeEventListener('pointerdown',kick)};document.addEventListener('pointerdown',kick)}
 
 /* ---------- boot ---------- */
 const gs=document.createElement('script');gs.src='https://accounts.google.com/gsi/client';gs.async=true;gs.onload=initAuth;document.head.append(gs);
