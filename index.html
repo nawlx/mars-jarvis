@@ -57,10 +57,10 @@ textarea{resize:vertical;min-height:90px}
 .row>input,.row>textarea{flex:1;min-width:180px}
 .row>select{width:auto}
 .list{display:grid;gap:10px}
-.item{padding:14px 16px;display:flex;gap:12px;align-items:flex-start}
-.item .t{flex:1;white-space:pre-wrap;overflow-wrap:anywhere}
+.item{padding:14px 16px;display:flex;flex-wrap:wrap;gap:10px 12px;align-items:flex-start}
+.item .t{flex:1 1 220px;min-width:0;white-space:pre-wrap;overflow-wrap:anywhere}
 .item small{display:block;color:var(--muted);font-size:14px;margin-top:2px}
-.acts{display:flex;gap:6px;flex:none}
+.acts{display:flex;flex-wrap:wrap;gap:6px;flex:none}
 .item.done .t{text-decoration:line-through;color:var(--muted)}
 .chk{width:22px;height:22px;border-radius:7px;border:1.5px solid var(--muted);background:none;cursor:pointer;flex:none;margin-top:2px;color:var(--ok);font-size:15px;line-height:1}
 .done .chk{border-color:var(--ok)}
@@ -161,7 +161,7 @@ nav button{flex:1;min-width:0;flex-direction:column;justify-content:center;gap:2
   <div class="glass card" style="margin-bottom:14px">
     <div class="row"><input id="resTitle" placeholder="Topic or title" aria-label="Research title"><input id="resUrl" placeholder="Link (optional)" inputmode="url" aria-label="Link"></div>
     <div class="row"><textarea id="resNotes" placeholder="Notes" aria-label="Research notes"></textarea></div>
-    <div class="row" style="margin:0"><input id="resTags" placeholder="Tags, separated by commas" aria-label="Tags"><button class="btn" id="resAdd">Save research</button></div>
+    <div class="row" style="margin:0"><input id="resTags" placeholder="Tags, separated by commas" aria-label="Tags"><button class="btn" id="resAdd">Save research</button><button class="btn ice" id="resAI">Research with Jarvis</button></div>
   </div>
   <div class="row"><input id="resQ" type="search" placeholder="Search research" aria-label="Search research"></div>
   <div class="list" id="resList"></div>
@@ -184,7 +184,7 @@ nav button{flex:1;min-width:0;flex-direction:column;justify-content:center;gap:2
   <div class="row" style="margin-top:14px"><input id="cmdIn" placeholder="Or type a command, e.g. add task call mom" aria-label="Type a command"><button class="btn" id="cmdGo">Run</button></div>
   <div class="glass card"><h2>Command history</h2><div class="hist" id="voiceHist"></div></div>
   <div class="glass card" style="margin-top:14px"><h2>Commands</h2>
-    <div class="muted">add note … · show notes · search notes … · delete last note · delete note 2<br>add task … (add “high priority” at the end) · complete task 1 · delete task … · set priority of task 2 to high · show tasks<br>research quantum computing · show research · search research … · delete research 1<br>go to home / memory / tasks / research / settings · mute · unmute</div></div>
+    <div class="muted">add note … · show notes · search notes … · delete last note · delete note 2<br>add task … (add “high priority” at the end) · complete task 1 · delete task … · set priority of task 2 to high · show tasks<br>research quantum computing (Jarvis writes a brief) · deep dive on … · add research … (plain save) · show research · search research … · delete research 1<br>go to home / memory / tasks / research / settings · mute · unmute</div></div>
 </section>
 
 <section id="settings">
@@ -203,6 +203,7 @@ nav button{flex:1;min-width:0;flex-direction:column;justify-content:center;gap:2
     <label for="gmodel">Model</label><select id="gmodel"><option value="">Auto (gemini-flash-latest)</option></select>
     <div class="row" style="margin:14px 0 8px"><button class="btn" id="gSave">Save key</button><button class="btn ghost" id="gModels">Load models</button><button class="btn ghost" id="gTest">Test</button><button class="btn ghost" id="gClear">Remove key</button></div>
     <label style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="gOn" style="width:auto"> Use the brain for commands I do not recognise</label>
+    <label style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="gWeb" style="width:auto"> Let Jarvis search the web when researching</label>
   </div>
   <div class="glass card" style="margin-top:14px">
     <h2>Voice</h2>
@@ -212,7 +213,7 @@ nav button{flex:1;min-width:0;flex-direction:column;justify-content:center;gap:2
     <label for="pitch">Pitch</label><input id="pitch" type="range" min=".5" max="1.5" step=".05">
     <div class="row" style="margin:14px 0 0"><button class="btn" id="jvPreset">Jarvis voice preset</button><button class="btn ghost" id="testVoice">Test voice</button></div>
   </div>
-<p class="muted" style="margin:14px 4px">Mars Jarvis v1.1 · phase two</p>
+<p class="muted" style="margin:14px 4px">Mars Jarvis v1.3 · phase two</p>
 </section>
 </main>
 </div>
@@ -333,14 +334,15 @@ function renderResearch(){
   const L=db.research.filter(r=>[r.title,r.url,r.notes,(r.tags||[]).join(' ')].join(' ').toLowerCase().includes(q));
   if(!L.length)box.append(h('div',{class:'glass empty'},q?'No research matches your search.':'No research yet. Add a topic above or say “Jarvis, research quantum computing”.'));
   L.forEach(r=>box.append(h('div',{class:'glass item'},
-    h('div',{class:'t'},h('b',{},r.title),r.url?h('small',{},link(r.url)):'',r.notes?h('div',{},r.notes):'',(r.tags&&r.tags.length)?h('small',{},r.tags.map(t=>'#'+t).join(' ')):'',h('small',{},fmt(r.updated||r.created))),
-    h('div',{class:'acts'},h('button',{class:'btn sm ghost',onclick:()=>editRes(r)},'Edit'),h('button',{class:'btn sm ghost',onclick:()=>memory.remove('research',r.id)},'Delete')))))}
+    h('div',{class:'t'},h('b',{},r.title),r.url?h('small',{},link(r.url)):'',r.notes?h('div',{},r.notes):'',(r.sources&&r.sources.length)?h('small',{},'Sources: ',...r.sources.flatMap((x,i)=>[i?' · ':'',h('a',{href:x.uri,target:'_blank',rel:'noopener'},x.title||'link')])):'',(r.tags&&r.tags.length)?h('small',{},r.tags.map(t=>'#'+t).join(' ')):'',h('small',{},fmt(r.updated||r.created))),
+    h('div',{class:'acts'},h('button',{class:'btn sm',onclick:()=>researchTopic(r.title,r.id)},'Ask Jarvis'),h('button',{class:'btn sm ghost',onclick:()=>editRes(r)},'Edit'),h('button',{class:'btn sm ghost',onclick:()=>memory.remove('research',r.id)},'Delete')))))}
 function editRes(r){$('#rdTitle').value=r.title;$('#rdUrl').value=r.url||'';$('#rdNotes').value=r.notes||'';$('#rdTags').value=(r.tags||[]).join(', ');$('#rdlg').showModal();
   $('#rdSave').onclick=()=>{const t=$('#rdTitle').value.trim();if(t){memory.edit('research',r.id,{title:t,url:$('#rdUrl').value.trim(),notes:$('#rdNotes').value.trim(),tags:tagList($('#rdTags').value)});$('#rdlg').close()}}}
 $('#rdCancel').onclick=()=>$('#rdlg').close();
 $('#resAdd').onclick=()=>{const t=$('#resTitle').value.trim();if(!t){toast('Give the research a title.');return}
   memory.add('research',{title:t,url:$('#resUrl').value.trim(),notes:$('#resNotes').value.trim(),tags:tagList($('#resTags').value)});
   ['#resTitle','#resUrl','#resNotes','#resTags'].forEach(i=>$(i).value='')};
+$('#resAI').onclick=()=>{const t=$('#resTitle').value.trim();if(!t){toast('Give Jarvis a topic first.');return}$('#resTitle').value='';researchTopic(t,null,'research '+t)};
 $('#resQ').oninput=e=>{resFilter=e.target.value;renderResearch()};
 
 /* notes + tasks UI */
@@ -411,7 +413,10 @@ function run(input){
   if(/^(?:show|open|list)(?:\s+(?:my|all))?\s+research$/i.test(c)){resFilter='';$('#resQ').value='';go('research');renderResearch();return say(`You have ${db.research.length} research entr${db.research.length===1?'y':'ies'}.`+(db.research[0]?` The latest is ${db.research[0].title}.`:''))}
   if(m=c.match(/^(?:search|find)\s+research(?:\s+for)?\s+(.+)/i)){resFilter=m[1];$('#resQ').value=m[1];go('research');renderResearch();const n=db.research.filter(r=>[r.title,r.notes,(r.tags||[]).join(' ')].join(' ').toLowerCase().includes(m[1].toLowerCase())).length;return say(`I found ${n} research entr${n===1?'y':'ies'} matching ${m[1]}.`)}
   if(m=c.match(/^delete\s+research\s+(.+)/i)){const r=findBy(db.research,m[1]);if(!r)return say('I could not find that research.');memory.remove('research',r.id);return say('Research deleted.')}
-  if(m=c.match(/^(?:(?:add|save|new)\s+)?research(?:\s+(?:on|about))?\s+(.+)/i)){memory.add('research',{title:m[1],url:'',notes:'',tags:[]});return say(`Research saved: ${m[1]}.`)}
+  if(m=c.match(/^(?:(add|save|new)\s+)?research(?:\s+(?:on|about))?\s+(.+)/i)){
+    if(!m[1]&&brainReady())return researchTopic(m[2],null,input);
+    memory.add('research',{title:m[2],url:'',notes:'',tags:[]});return say(`Research saved: ${m[2]}.`)}
+  if(m=c.match(/^(?:deep dive on|dive into|look into|investigate|find out about)\s+(.+)/i)){if(!brainReady())return say('I need my brain connected for that. Add your Gemini key in Settings.');return researchTopic(m[1],null,input)}
   if(/^add\s+task$/i.test(c)){awaiting='task';awaitT=setTimeout(()=>awaiting=null,20000);return say('What is the task?')}
   const lvl=p=>p==='urgent'?'high':p;
   if(m=c.match(/^(?:add|save|create|take|new)\s+(?:a\s+)?note(?:\s+(?:that|about))?\s+(.+)/i)){memory.add('notes',{text:m[1]});return say('I have saved your note.')}
@@ -441,9 +446,10 @@ const brainKey=()=>localStorage.getItem('mj_gemini')||'';
 const brainReady=()=>!!brainKey()&&db.settings.brain!==false&&navigator.onLine;
 const SYS="You are J.A.R.V.I.S., the calm, dry-witted British AI inside the user's personal dashboard called Mars Jarvis. Your replies are spoken aloud: plain text only, no markdown, no lists, at most three short sentences. Be warm, precise and a little witty. You can manage the dashboard by returning actions: add_note (text), add_task (text, priority), complete_task and delete_task (query = the task number or words from it), set_priority (query, priority), delete_note (query), add_research (text = title, plus url, notes, tags), open_page (text = home, memory, tasks, research, voice or settings). Only return an action when the user clearly asks for it, and make your reply confirm it in the past tense. Never claim to have done something you did not return as an action. Use the dashboard state to answer questions about tasks, notes and research. If you do not know something, say so plainly. The user speaks through speech recognition, so interpret transcription errors generously.";
 const SCHEMA={type:'OBJECT',properties:{reply:{type:'STRING'},actions:{type:'ARRAY',items:{type:'OBJECT',properties:{type:{type:'STRING',enum:['add_note','add_task','complete_task','delete_task','set_priority','delete_note','add_research','open_page']},text:{type:'STRING'},priority:{type:'STRING',enum:['high','medium','low']},query:{type:'STRING'},url:{type:'STRING'},notes:{type:'STRING'},tags:{type:'ARRAY',items:{type:'STRING'}}},required:['type']}}},required:['reply']};
+const altModels=()=>{try{return JSON.parse(localStorage.getItem('mj_models')||'[]').filter(n=>n!==db.settings.model&&!/preview|exp/i.test(n))}catch{return[]}};
 function brainContext(){
   const open=sortedTasks().filter(t=>!t.done).slice(0,15).map((t,i)=>`${i+1}. ${t.text} [${t.priority}]`);
-  return `Time: ${new Date().toLocaleString()}\nOpen tasks:\n${open.join('\n')||'none'}\nTotal notes: ${db.notes.length}. Latest notes: ${JSON.stringify(db.notes.slice(0,6).map(n=>n.text.slice(0,140)))}\nResearch titles: ${JSON.stringify(db.research.slice(0,6).map(r=>r.title))}`}
+  return `Time: ${new Date().toLocaleString()}\nOpen tasks:\n${open.join('\n')||'none'}\nTotal notes: ${db.notes.length}. Latest notes: ${JSON.stringify(db.notes.slice(0,6).map(n=>n.text.slice(0,140)))}\nResearch: ${JSON.stringify(db.research.slice(0,6).map(r=>({title:r.title,notes:(r.notes||'').slice(0,160)})))}`}
 function runActions(list){
   let bad=0;
   for(const a of list){
@@ -461,34 +467,63 @@ async function askBrain(input){
   let out=null,err=null;
   try{
     const hist=db.conversations.filter(c=>c.heard&&c.reply).slice(0,6).reverse().flatMap(c=>[{role:'user',parts:[{text:c.heard}]},{role:'model',parts:[{text:c.reply}]}]);
-    const r=await fetch(GURL+'models/'+encodeURIComponent(db.settings.model||'gemini-flash-latest')+':generateContent',{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':brainKey()},body:JSON.stringify({
+    const call=m=>fetch(GURL+'models/'+encodeURIComponent(m)+':generateContent',{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':brainKey()},body:JSON.stringify({
       systemInstruction:{parts:[{text:SYS}]},
       contents:[...hist,{role:'user',parts:[{text:input+'\n\n[Dashboard state]\n'+brainContext()}]}],
       generationConfig:{responseMimeType:'application/json',responseSchema:SCHEMA,temperature:.6,maxOutputTokens:1024}})});
+    let r;for(const m of [db.settings.model||'gemini-flash-latest',...altModels()].slice(0,3)){r=await call(m);if(r.status!==429&&r.status!==404)break}
     if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error((e.error&&e.error.message)||('HTTP '+r.status))}
     const j=await r.json(),parts=j.candidates&&j.candidates[0]&&j.candidates[0].content&&j.candidates[0].content.parts;
     out=JSON.parse((parts||[]).map(p=>p.text||'').join(''));
   }catch(e){err=e}
   thinking=false;setState();
-  if(err){reply(input,'I could not reach my brain just now.');toast(String(err.message||err).slice(0,140));return}
+  if(err){reply(input,'I could not reach my brain just now.');const em=String(err.message||err);toast(/quota|exceeded|exhausted|429/i.test(em)?'Gemini quota reached. Wait a minute, or pick a different model in Settings.':em.slice(0,140));return}
   const bad=runActions(out.actions||[]);
   reply(input,(out.reply||'Done.')+(bad?' I could not find '+(bad>1?'some of those items.':'one of those items.'):''))}
+
+const RSYS="You are a research analyst writing for a busy, curious reader. Write a brief on the given topic. First line: a one-sentence overview in plain words. Then 4 to 6 lines, each starting with '- ', giving key facts, how it works, the current state, or notable names. Then one line starting 'Why it matters: '. Be accurate and concrete, under 200 words, and say so if something is uncertain or contested. No markdown except the leading hyphens. Finish with a last line 'TAGS: ' followed by 3 to 5 lowercase comma-separated tags.";
+async function gem(body){
+  let r;for(const m of [db.settings.model||'gemini-flash-latest',...altModels()].slice(0,3)){r=await fetch(GURL+'models/'+encodeURIComponent(m)+':generateContent',{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':brainKey()},body:JSON.stringify(body)});if(r.status!==429&&r.status!==404)break}
+  if(!r.ok){const e=await r.json().catch(()=>({}));const er=new Error((e.error&&e.error.message)||('HTTP '+r.status));er.status=r.status;throw er}
+  return r.json()}
+async function researchTopic(topic,id,heardTxt){
+  heardTxt=heardTxt||('research '+topic);
+  if(!brainReady()){toast('Add your Gemini key in Settings first.');return}
+  thinking=true;setState();$('#heard').textContent='Researching '+topic+'…';
+  const body={systemInstruction:{parts:[{text:RSYS}]},contents:[{role:'user',parts:[{text:'Research brief on: '+topic}]}],generationConfig:{temperature:.4,maxOutputTokens:1500}};
+  let j=null,err=null;
+  try{
+    if(db.settings.web!==false){try{j=await gem({...body,tools:[{google_search:{}}]})}catch(e){if(e.status===429)throw e}}
+    if(!j)j=await gem(body);
+  }catch(e){err=e}
+  thinking=false;setState();
+  if(err){const em=String(err.message||err);reply(heardTxt,'I could not complete that research.');toast(/quota|exceeded|exhausted|429/i.test(em)?'Gemini quota reached. Wait a minute, or pick a different model in Settings.':em.slice(0,140));return}
+  const cand=(j.candidates||[])[0]||{};let text=((cand.content&&cand.content.parts)||[]).map(p=>p.text||'').join('').trim();
+  const tm=text.match(/^TAGS:\s*(.+)$/im);const tags=tm?tagList(tm[1].toLowerCase()).slice(0,5):[];text=text.replace(/^TAGS:.*$/im,'').trim();
+  if(!text){reply(heardTxt,'I came back empty handed. Try rephrasing the topic.');return}
+  const seen=new Set(),sources=[];for(const c of (((cand.groundingMetadata||{}).groundingChunks)||[])){const w=c.web;if(w&&w.uri&&!seen.has(w.uri)&&sources.length<5){seen.add(w.uri);sources.push({title:(w.title||'').slice(0,80),uri:w.uri})}}
+  if(id){const old=db.research.find(x=>x.id===id)||{};memory.edit('research',id,{notes:old.notes?old.notes+'\n\n'+text:text,tags:[...new Set([...(old.tags||[]),...tags])],sources:[...(old.sources||[]),...sources].slice(0,8)})}
+  else memory.add('research',{title:topic,url:'',notes:text,tags,sources,ai:true});
+  go('research');
+  const first=text.split('\n')[0].replace(/^-\s*/,'').slice(0,260);
+  reply(heardTxt,first+' The full brief is saved in Research.')}
 
 $('#cmdGo').onclick=()=>{const v=$('#cmdIn').value.trim();if(v){$('#heard').textContent='“'+v+'”';run(v.replace(new RegExp('^'+(db.settings.wake||'jarvis')+'[\\s,]*','i'),''));$('#cmdIn').value=''}};
 $('#cmdIn').onkeydown=e=>{if(e.key==='Enter')$('#cmdGo').click()};
 
 /* ---------- settings ---------- */
-function applySettings(){$('#wake').value=db.settings.wake;$('#rate').value=db.settings.rate;$('#pitch').value=db.settings.pitch||.9;$('#gOn').checked=db.settings.brain!==false;if(brainKey())$('#gkey').placeholder='Key saved on this phone';{const sel=$('#gmodel');if(db.settings.model&&![...sel.options].some(o=>o.value===db.settings.model))sel.append(h('option',{value:db.settings.model},db.settings.model));sel.value=db.settings.model||''}voices();$('#muteBtn').textContent=db.settings.muted?'Unmute voice':'Mute voice';setState()}
+function applySettings(){$('#wake').value=db.settings.wake;$('#rate').value=db.settings.rate;$('#pitch').value=db.settings.pitch||.9;$('#gOn').checked=db.settings.brain!==false;$('#gWeb').checked=db.settings.web!==false;if(brainKey())$('#gkey').placeholder='Key saved on this phone';{const sel=$('#gmodel');if(db.settings.model&&![...sel.options].some(o=>o.value===db.settings.model))sel.append(h('option',{value:db.settings.model},db.settings.model));sel.value=db.settings.model||''}voices();$('#muteBtn').textContent=db.settings.muted?'Unmute voice':'Mute voice';setState()}
 $('#wake').onchange=e=>{db.settings.wake=(e.target.value.trim()||'jarvis').toLowerCase();memory.save()};
 $('#gSave').onclick=()=>{const k=$('#gkey').value.trim();if(!k){toast('Paste your key first.');return}localStorage.setItem('mj_gemini',k);$('#gkey').value='';$('#gkey').placeholder='Key saved on this phone';toast('Key saved on this phone.')};
 $('#gClear').onclick=()=>{localStorage.removeItem('mj_gemini');$('#gkey').placeholder='AIza…';toast('Key removed.')};
+$('#gWeb').onchange=e=>{db.settings.web=e.target.checked;memory.save()};
 $('#gOn').onchange=e=>{db.settings.brain=e.target.checked;memory.save()};
 $('#gmodel').onchange=e=>{db.settings.model=e.target.value;memory.save()};
 $('#gTest').onclick=()=>{if(!brainKey()){toast('Save your key first.');return}askBrain('Introduce yourself in one short sentence.')};
 $('#gModels').onclick=async()=>{
   if(!brainKey()){toast('Save your key first.');return}
   try{const r=await fetch(GURL+'models?pageSize=200',{headers:{'x-goog-api-key':brainKey()}});if(!r.ok)throw new Error((await r.json().catch(()=>({}))).error?.message||'HTTP '+r.status);
-    const L=((await r.json()).models||[]).filter(m=>(m.supportedGenerationMethods||[]).includes('generateContent')&&/flash/i.test(m.name)&&!/lite|image|tts|live|audio|embed|robotics|computer/i.test(m.name)).map(m=>m.name.replace('models/','')).sort().reverse();
+    const L=((await r.json()).models||[]).filter(m=>(m.supportedGenerationMethods||[]).includes('generateContent')&&/flash/i.test(m.name)&&!/image|tts|live|audio|embed|robotics|computer/i.test(m.name)).map(m=>m.name.replace('models/','')).sort().reverse().sort((a,b)=>/preview|exp/i.test(a)-/preview|exp/i.test(b));localStorage.setItem('mj_models',JSON.stringify(L));
     const sel=$('#gmodel');sel.replaceChildren(h('option',{value:''},'Auto (gemini-flash-latest)'),...L.map(n=>h('option',{value:n,selected:n===db.settings.model},n)));toast(L.length+' models found.')}
   catch(e){toast(String(e.message||e).slice(0,140))}};
 $('#pitch').onchange=e=>{db.settings.pitch=+e.target.value;memory.save()};
