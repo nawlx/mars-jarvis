@@ -213,7 +213,7 @@ nav button{flex:1;min-width:0;flex-direction:column;justify-content:center;gap:2
     <label for="pitch">Pitch</label><input id="pitch" type="range" min=".5" max="1.5" step=".05">
     <div class="row" style="margin:14px 0 0"><button class="btn" id="jvPreset">Jarvis voice preset</button><button class="btn ghost" id="testVoice">Test voice</button></div>
   </div>
-<p class="muted" style="margin:14px 4px">Mars Jarvis v1.3 · phase two</p>
+<p class="muted" style="margin:14px 4px">Mars Jarvis v1.4 · phase two</p>
 </section>
 </main>
 </div>
@@ -446,6 +446,7 @@ const brainKey=()=>localStorage.getItem('mj_gemini')||'';
 const brainReady=()=>!!brainKey()&&db.settings.brain!==false&&navigator.onLine;
 const SYS="You are J.A.R.V.I.S., the calm, dry-witted British AI inside the user's personal dashboard called Mars Jarvis. Your replies are spoken aloud: plain text only, no markdown, no lists, at most three short sentences. Be warm, precise and a little witty. You can manage the dashboard by returning actions: add_note (text), add_task (text, priority), complete_task and delete_task (query = the task number or words from it), set_priority (query, priority), delete_note (query), add_research (text = title, plus url, notes, tags), open_page (text = home, memory, tasks, research, voice or settings). Only return an action when the user clearly asks for it, and make your reply confirm it in the past tense. Never claim to have done something you did not return as an action. Use the dashboard state to answer questions about tasks, notes and research. If you do not know something, say so plainly. The user speaks through speech recognition, so interpret transcription errors generously.";
 const SCHEMA={type:'OBJECT',properties:{reply:{type:'STRING'},actions:{type:'ARRAY',items:{type:'OBJECT',properties:{type:{type:'STRING',enum:['add_note','add_task','complete_task','delete_task','set_priority','delete_note','add_research','open_page']},text:{type:'STRING'},priority:{type:'STRING',enum:['high','medium','low']},query:{type:'STRING'},url:{type:'STRING'},notes:{type:'STRING'},tags:{type:'ARRAY',items:{type:'STRING'}}},required:['type']}}},required:['reply']};
+const quotaMsg=em=>{const m=em.match(/retry in ([\d.]+)\s*s/i);return 'Gemini quota reached. '+(m?'Try again in about '+Math.ceil(m[1])+' seconds.':'Wait a minute, or pick a different model in Settings.')};
 const altModels=()=>{try{return JSON.parse(localStorage.getItem('mj_models')||'[]').filter(n=>n!==db.settings.model&&!/preview|exp/i.test(n))}catch{return[]}};
 function brainContext(){
   const open=sortedTasks().filter(t=>!t.done).slice(0,15).map((t,i)=>`${i+1}. ${t.text} [${t.priority}]`);
@@ -477,7 +478,7 @@ async function askBrain(input){
     out=JSON.parse((parts||[]).map(p=>p.text||'').join(''));
   }catch(e){err=e}
   thinking=false;setState();
-  if(err){reply(input,'I could not reach my brain just now.');const em=String(err.message||err);toast(/quota|exceeded|exhausted|429/i.test(em)?'Gemini quota reached. Wait a minute, or pick a different model in Settings.':em.slice(0,140));return}
+  if(err){$('#heard').textContent='Waiting for “'+(db.settings.wake||'jarvis')+'”…';reply(input,'I could not reach my brain just now.');const em=String(err.message||err);toast(/quota|exceeded|exhausted|429/i.test(em)?quotaMsg(em):em.slice(0,140));return}
   const bad=runActions(out.actions||[]);
   reply(input,(out.reply||'Done.')+(bad?' I could not find '+(bad>1?'some of those items.':'one of those items.'):''))}
 
@@ -493,11 +494,11 @@ async function researchTopic(topic,id,heardTxt){
   const body={systemInstruction:{parts:[{text:RSYS}]},contents:[{role:'user',parts:[{text:'Research brief on: '+topic}]}],generationConfig:{temperature:.4,maxOutputTokens:1500}};
   let j=null,err=null;
   try{
-    if(db.settings.web!==false){try{j=await gem({...body,tools:[{google_search:{}}]})}catch(e){if(e.status===429)throw e}}
+    if(db.settings.web!==false){try{j=await gem({...body,tools:[{google_search:{}}]})}catch(e){j=null}}
     if(!j)j=await gem(body);
   }catch(e){err=e}
   thinking=false;setState();
-  if(err){const em=String(err.message||err);reply(heardTxt,'I could not complete that research.');toast(/quota|exceeded|exhausted|429/i.test(em)?'Gemini quota reached. Wait a minute, or pick a different model in Settings.':em.slice(0,140));return}
+  if(err){$('#heard').textContent='Waiting for “'+(db.settings.wake||'jarvis')+'”…';const em=String(err.message||err);reply(heardTxt,'I could not complete that research.');toast(/quota|exceeded|exhausted|429/i.test(em)?quotaMsg(em):em.slice(0,140));return}
   const cand=(j.candidates||[])[0]||{};let text=((cand.content&&cand.content.parts)||[]).map(p=>p.text||'').join('').trim();
   const tm=text.match(/^TAGS:\s*(.+)$/im);const tags=tm?tagList(tm[1].toLowerCase()).slice(0,5):[];text=text.replace(/^TAGS:.*$/im,'').trim();
   if(!text){reply(heardTxt,'I came back empty handed. Try rephrasing the topic.');return}
