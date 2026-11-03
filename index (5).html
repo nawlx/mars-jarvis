@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mars Jarvis</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#040714">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Rajdhani:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#040714;--ink:#e8eef5;--muted:#7f8c9c;--mars:#ff6a3c;--ice:#5ee1ff;--ok:#6dffb0;--glass:rgba(255,255,255,.05);--line:rgba(255,255,255,.11);--r:16px;
+--disp:'Orbitron','Segoe UI',sans-serif;--ui:'Rajdhani','Segoe UI',system-ui,sans-serif}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%;max-width:100vw;overflow-x:hidden}
+main,section,.glass{min-width:0;max-width:100%}
+body{font:500 17px/1.45 var(--ui);color:var(--ink);background:var(--bg);overflow:hidden;
+background-image:radial-gradient(55% 38% at 90% 0%,rgba(255,130,80,.16),transparent),radial-gradient(75% 50% at 8% 100%,rgba(40,80,255,.40),transparent),radial-gradient(60% 45% at 85% 58%,rgba(120,60,255,.20),transparent),
+linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);background-size:auto,auto,44px 44px,44px 44px}
+button,input,select,textarea{font:inherit;color:inherit}
+button,nav,.hero,.reactor{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+#pttBtn{touch-action:none}
+:focus-visible{outline:2px solid var(--ice);outline-offset:2px}
+.glass{background:var(--glass);backdrop-filter:blur(18px) saturate(140%);-webkit-backdrop-filter:blur(18px) saturate(140%);border:1px solid var(--line);border-radius:var(--r);box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 10px 40px rgba(0,0,0,.4)}
+#app{display:grid;grid-template-columns:230px 1fr;height:100%;gap:14px;padding:14px}
+nav{display:flex;flex-direction:column;padding:18px 12px;gap:6px}
+.brand{font:700 18px var(--disp);letter-spacing:.12em;padding:4px 10px 18px}
+.brand b{color:var(--mars)}
+nav button{display:flex;gap:12px;align-items:center;background:none;border:1px solid transparent;border-radius:12px;padding:11px 12px;cursor:pointer;color:var(--muted);text-align:left;font-size:18px}
+nav button:hover{color:var(--ink);background:var(--glass)}
+nav button[aria-current=page]{color:var(--ink);border-color:rgba(255,106,60,.5);background:rgba(255,106,60,.1);box-shadow:0 0 22px rgba(255,106,60,.18)}
+nav svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.sp{flex:1}
+.nstat{padding:10px;font-size:15px;color:var(--muted);display:flex;gap:8px;align-items:center}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--muted);flex:none}
+body[data-state=listening] .dot.st{background:var(--ice);box-shadow:0 0 12px var(--ice);animation:pulse 1.4s infinite}
+body[data-state=speaking] .dot.st{background:var(--mars);box-shadow:0 0 12px var(--mars)}
+@keyframes pulse{50%{opacity:.35}}
+main{overflow:auto;padding:4px 6px 20px 2px}
+section{display:none;animation:none}
+section.on{display:block}
+h1{font:700 24px var(--disp);letter-spacing:.08em;margin:6px 0 16px}
+h2{font:600 15px var(--ui);color:var(--muted);letter-spacing:.06em;margin-bottom:10px}
+.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+.card{padding:18px}
+.big{font:700 34px var(--disp)}
+.muted{color:var(--muted)}
+.banner{padding:12px 16px;margin-bottom:14px;border-color:rgba(255,106,60,.5);display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.banner[hidden]{display:none}
+.btn{background:rgba(255,106,60,.14);border:1px solid rgba(255,106,60,.55);border-radius:12px;padding:9px 16px;cursor:pointer;font-weight:600}
+.btn:hover{background:rgba(255,106,60,.28)}
+.btn.ice{background:rgba(94,225,255,.1);border-color:rgba(94,225,255,.5)}
+.btn.ice:hover{background:rgba(94,225,255,.22)}
+.btn.ghost{background:none;border-color:var(--line);color:var(--muted)}
+.btn.sm{padding:4px 10px;font-size:15px}
+input,select,textarea{background:rgba(0,0,0,.35);border:1px solid var(--line);border-radius:12px;padding:10px 14px;width:100%}
+textarea{resize:vertical;min-height:90px}
+.row{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.row>input,.row>textarea{flex:1;min-width:180px}
+.row>select{width:auto}
+.list{display:grid;gap:10px}
+.item{padding:14px 16px;display:flex;flex-wrap:wrap;gap:10px 12px;align-items:flex-start}
+.item .t{flex:1 1 220px;min-width:0;white-space:pre-wrap;overflow-wrap:anywhere}
+.item small{display:block;color:var(--muted);font-size:14px;margin-top:2px}
+.acts{display:flex;flex-wrap:wrap;gap:6px;flex:none}
+.item.done .t{text-decoration:line-through;color:var(--muted)}
+.chk{width:22px;height:22px;border-radius:7px;border:1.5px solid var(--muted);background:none;cursor:pointer;flex:none;margin-top:2px;color:var(--ok);font-size:15px;line-height:1}
+.done .chk{border-color:var(--ok)}
+.pri{font-size:14px;border-radius:99px;padding:1px 10px;border:1px solid;cursor:pointer;background:none;flex:none}
+.pri.high{color:var(--mars);border-color:var(--mars)}.pri.medium{color:#ffd166;border-color:#ffd166}.pri.low{color:var(--ice);border-color:var(--ice)}
+.item a{color:var(--ice);overflow-wrap:anywhere}
+.empty{padding:26px;text-align:center;color:var(--muted)}
+/* reactor */
+.reactor{width:var(--s,220px);height:var(--s,220px);margin:auto;display:block}
+.reactor .a{transform-origin:100px 100px;animation:spin 28s linear infinite}
+.reactor .b{transform-origin:100px 100px;animation:spin 18s linear infinite reverse}
+.reactor .core{fill:var(--mars);filter:drop-shadow(0 0 10px var(--mars));transform-origin:100px 100px;transition:fill .3s}
+@keyframes spin{to{transform:rotate(360deg)}}
+body[data-state=listening] .reactor .core{fill:var(--ice);filter:drop-shadow(0 0 14px var(--ice));animation:pulse 1.4s infinite}
+body[data-state=speaking] .reactor .core{animation:beat .5s infinite alternate}
+body[data-state=muted] .reactor .core{fill:#4b5563;filter:none}
+@keyframes beat{to{transform:scale(1.25)}}
+.holo-wrap{--sz:min(340px,82vw);width:var(--sz);height:var(--sz);margin:auto;cursor:pointer}
+.holo-wrap.sb{--sz:min(300px,78vw);filter:brightness(.72);cursor:default;margin:0 0 8px}
+#standby{position:fixed;inset:0;z-index:8;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;padding:20px}
+#standby[hidden]{display:none}
+#launch{position:fixed;left:12px;right:12px;bottom:104px;z-index:9;display:flex;gap:10px;align-items:center;padding:12px 14px}
+#launch[hidden]{display:none}
+#launchTxt{flex:1;overflow-wrap:anywhere}
+#launchGo{text-decoration:none;color:inherit}
+code{background:rgba(255,255,255,.08);padding:2px 6px;border-radius:6px;overflow-wrap:anywhere;font-size:15px}
+#sbClock{font:700 44px var(--disp);color:rgba(232,238,245,.85)}
+#sbText{color:var(--ice);min-height:28px;font-size:19px;max-width:90vw}
+#sbHint{color:var(--muted);font-size:14px}
+.holo-wrap.sm{--sz:min(220px,60vw)}
+.holo-cv{width:100%;height:100%;display:block}
+.hero{background:radial-gradient(circle at 50% 38%,rgba(40,100,255,.24),transparent 62%),var(--glass)}
+.hero{display:flex;gap:24px;align-items:center;flex-wrap:wrap;justify-content:center;padding:26px}
+.hero .txt{min-width:220px}
+.mic{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0}
+.mic .btn.on{background:rgba(94,225,255,.28);box-shadow:0 0 20px rgba(94,225,255,.35)}
+#heard{min-height:28px;color:var(--ice);font-size:19px}
+.hist{display:grid;gap:8px;font-size:16px}
+.hist div{padding:8px 12px;border-left:2px solid var(--line)}
+.hist .u{border-color:var(--ice)}.hist .j{border-color:var(--mars);color:var(--muted)}
+label{display:block;color:var(--muted);font-size:15px;margin:12px 0 4px}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);padding:10px 18px;z-index:9;opacity:0;pointer-events:none;transition:opacity .25s}
+#toast.on{opacity:1}
+dialog{margin:auto;border:1px solid var(--line);border-radius:var(--r);background:#0d1118;color:var(--ink);padding:20px;width:min(520px,92vw)}
+dialog::backdrop{background:rgba(0,0,0,.6);backdrop-filter:blur(4px)}
+@media(max-width:760px){
+body{overflow-y:auto;overflow-x:hidden}
+#app{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto;padding:8px;height:100%}
+main{min-width:0}
+nav{order:2;flex-direction:row;padding:6px;justify-content:space-around;position:sticky;bottom:0}
+nav .brand,nav .sp,nav .nstat{display:none}
+nav{gap:2px}
+nav button{flex:1;min-width:0;flex-direction:column;justify-content:center;gap:2px;font-size:12px;padding:6px 2px;text-align:center}
+.item{flex-wrap:wrap}
+}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body data-state="idle">
+<div id="app">
+<nav class="glass" aria-label="Main">
+  <div class="brand">MARS <b>JARVIS</b></div>
+  <button data-v="home" aria-current="page"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg>Home</button>
+  <button data-v="memory"><svg viewBox="0 0 24 24"><path d="M5 3h10l4 4v14H5zM9 12h6M9 16h6"/></svg>Memory</button>
+  <button data-v="tasks"><svg viewBox="0 0 24 24"><path d="M4 12l5 5L20 6"/></svg>Tasks</button>
+  <button data-v="research"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg>Research</button>
+  <button data-v="voice"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg>Voice</button>
+  <button data-v="settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg>Settings</button>
+  <div class="sp"></div>
+  <div class="nstat"><span class="dot st"></span><span id="stateLabel">Idle</span></div>
+  <div class="nstat"><span class="dot" id="syncDot"></span><span id="syncLabel">Local only</span></div>
+</nav>
+<main>
+
+<section id="home" class="on">
+  <div id="banner" class="glass banner"><span>Sign in with Google so Jarvis can save your data to Drive.</span><button class="btn" id="bannerBtn">Connect Google Drive</button></div>
+  <div class="glass hero">
+    <div class="holo-wrap" role="button" tabindex="0" aria-label="Jarvis hologram. Tap to start or stop listening."><canvas class="holo-cv" aria-hidden="true"></canvas></div>
+    <div class="txt">
+      <div class="muted" id="greet"></div>
+      <div class="big" id="clock"></div>
+      <p class="muted" style="margin-top:8px">Tap the hologram to start or stop listening. Say “Jarvis, add note blockchain idea”.</p>
+    </div>
+  </div>
+  <div class="grid" style="margin-top:14px">
+    <div class="glass card"><h2>Notes</h2><div class="big" id="sNotes">0</div></div>
+    <div class="glass card"><h2>Open tasks</h2><div class="big" id="sTasks">0</div></div>
+    <div class="glass card"><h2>Research</h2><div class="big" id="sRes">0</div></div>
+    <div class="glass card"><h2>Commands</h2><div class="big" id="sCmds">0</div></div>
+  </div>
+  <div class="glass card" style="margin-top:14px"><h2>Recent activity</h2><div class="hist" id="homeHist"></div></div>
+</section>
+
+<section id="memory">
+  <h1>Memory</h1>
+  <div class="row"><textarea id="noteIn" placeholder="Write a note" aria-label="New note"></textarea><button class="btn" id="noteAdd">Save note</button></div>
+  <div class="row"><input id="noteQ" type="search" placeholder="Search notes" aria-label="Search notes"></div>
+  <div class="list" id="noteList"></div>
+</section>
+
+<section id="tasks">
+  <h1>Tasks</h1>
+  <div class="row"><input id="taskIn" placeholder="Add a task" aria-label="New task"><select id="taskPri" aria-label="Priority"><option value="high">High</option><option value="medium" selected>Medium</option><option value="low">Low</option></select><button class="btn" id="taskAdd">Add task</button></div>
+  <div class="list" id="taskList"></div>
+</section>
+
+<section id="research">
+  <h1>Research</h1>
+  <div class="glass card" style="margin-bottom:14px">
+    <div class="row"><input id="resTitle" placeholder="Topic or title" aria-label="Research title"><input id="resUrl" placeholder="Link (optional)" inputmode="url" aria-label="Link"></div>
+    <div class="row"><textarea id="resNotes" placeholder="Notes" aria-label="Research notes"></textarea></div>
+    <div class="row" style="margin:0"><input id="resTags" placeholder="Tags, separated by commas" aria-label="Tags"><button class="btn" id="resAdd">Save research</button><button class="btn ice" id="resAI">Research with Jarvis</button></div>
+  </div>
+  <div class="row"><input id="resQ" type="search" placeholder="Search research" aria-label="Search research"></div>
+  <div class="list" id="resList"></div>
+</section>
+
+<section id="voice">
+  <h1>Voice console</h1>
+  <div class="glass hero">
+    <div class="holo-wrap sm" role="button" tabindex="0" aria-label="Jarvis hologram. Tap to start or stop listening."><canvas class="holo-cv" aria-hidden="true"></canvas></div>
+    <div class="txt">
+      <div class="mic">
+        <button class="btn ice" id="listenBtn" aria-pressed="false">Start listening</button>
+        <button class="btn" id="pttBtn">Hold to talk</button>
+        <button class="btn ghost" id="sbBtn">Standby mode</button>
+        <button class="btn ghost" id="muteBtn" aria-pressed="false">Mute voice</button>
+      </div>
+      <div id="heard" aria-live="polite">Waiting for the wake word “jarvis”.</div>
+      <div class="muted" id="voiceSupport"></div>
+    </div>
+  </div>
+  <div class="row" style="margin-top:14px"><input id="cmdIn" placeholder="Or type a command, e.g. add task call mom" aria-label="Type a command"><button class="btn" id="cmdGo">Run</button></div>
+  <div class="glass card"><h2>Command history</h2><div class="hist" id="voiceHist"></div></div>
+  <div class="glass card" style="margin-top:14px"><h2>Commands</h2>
+    <div class="muted">add note … · show notes · search notes … · delete last note · delete note 2<br>add task … (add “high priority” at the end) · complete task 1 · delete task … · set priority of task 2 to high · show tasks<br>open spotify · call mom · text mom saying … · play … (plays on Spotify) · pause · skip · what's playing · navigate to … · research quantum computing (Jarvis writes a brief) · deep dive on … · add research … (plain save) · show research · search research … · delete research 1<br>go to home / memory / tasks / research / settings · mute · unmute</div></div>
+</section>
+
+<section id="settings">
+  <h1>Settings</h1>
+  <div class="glass card">
+    <h2>Google Drive</h2>
+    <label for="cid">OAuth client ID (Web application)</label>
+    <input id="cid" placeholder="123456-abc.apps.googleusercontent.com">
+    <div class="row" style="margin-top:12px"><button class="btn" id="signIn">Sign in with Google</button><button class="btn ghost" id="signOut">Sign out</button></div>
+    <div class="muted" id="acct">Not signed in.</div>
+    <div class="row" style="margin:12px 0 0"><button class="btn ghost" id="exportBtn">Export JSON</button><button class="btn ghost" id="importBtn">Import JSON</button><input type="file" id="importFile" accept="application/json,.json" hidden></div>
+  </div>
+  <div class="glass card" style="margin-top:14px">
+    <h2>Brain (Gemini)</h2>
+    <p class="muted">When Jarvis does not recognise a command, he asks Gemini, so you can talk naturally and ask questions. Get a free key at aistudio.google.com/apikey. On the free tier Google may use what you send to improve its products, so keep private things out. The key stays on this phone.</p>
+    <label for="gkey">API key</label><input id="gkey" type="password" autocomplete="off" placeholder="AIza…">
+    <label for="gmodel">Model</label><select id="gmodel"><option value="">Auto (gemini-flash-latest)</option></select>
+    <div class="row" style="margin:14px 0 8px"><button class="btn" id="gSave">Save key</button><button class="btn ghost" id="gModels">Load models</button><button class="btn ghost" id="gTest">Test</button><button class="btn ghost" id="gClear">Remove key</button></div>
+    <label style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="gOn" style="width:auto"> Use the brain for commands I do not recognise</label>
+    <label style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="gWeb" style="width:auto"> Let Jarvis search the web when researching</label>
+  </div>
+  <div class="glass card" style="margin-top:14px">
+    <h2>Spotify</h2>
+    <p class="muted">Lets Jarvis start music directly in your Spotify app. Needs Spotify Premium. Create a free app at developer.spotify.com/dashboard, choose Web API, and add this exact redirect URI:</p>
+    <p><code id="spRedirect"></code></p>
+    <label for="spId">Client ID</label><input id="spId" placeholder="Paste the client ID from your Spotify app" autocomplete="off">
+    <div class="row" style="margin:12px 0 8px"><button class="btn" id="spConnect">Connect Spotify</button><button class="btn ghost" id="spTest">Check devices</button><button class="btn ghost" id="spCopy">Copy URI</button><button class="btn ghost" id="spDisc">Disconnect</button></div>
+    <div class="muted" id="spStatus">Not connected.</div>
+  </div>
+  <div class="glass card" style="margin-top:14px">
+    <h2>Phone actions</h2>
+    <p class="muted">Jarvis can open apps, call, text, search music and start navigation. Android asks you to tap once to confirm calls and texts, and sometimes app launches. Imported contacts are saved in your Jarvis data in your own Drive.</p>
+    <div class="row" style="margin:12px 0 8px"><button class="btn" id="ctImport">Import contacts</button><button class="btn ghost" id="ctClear">Remove all</button></div>
+    <div class="muted" id="ctCount"></div>
+    <div class="row" style="margin:12px 0"><input id="ctName" placeholder="Name"><input id="ctTel" placeholder="Number" inputmode="tel"><button class="btn ghost" id="ctAdd">Add</button></div>
+    <div class="list" id="ctList"></div>
+    <label for="appMap">My app shortcuts (one per line: name = package)</label>
+    <textarea id="appMap" placeholder="calculator = com.sec.android.app.popupcalculator"></textarea>
+  </div>
+  <div class="glass card" style="margin-top:14px">
+    <h2>Install on your phone</h2>
+    <p class="muted">Install Jarvis to get a home-screen icon, a full-screen window with no browser bars, and offline start-up. If the button is missing, use Chrome's ⋮ menu and choose Install app or Add to Home screen.</p>
+    <div class="row" style="margin:12px 0 0"><button class="btn" id="installBtn" hidden>Install Mars Jarvis</button></div>
+  </div>
+  <div class="glass card" style="margin-top:14px">
+    <h2>Always listening</h2>
+    <p class="muted">Phones pause the microphone when the screen is off or the browser is in the background, so Jarvis listens while the app is open. Standby mode keeps the screen on with a dark display, ideal on a stand or charger.</p>
+    <label style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="aAuto" style="width:auto"> Start listening when the app opens</label>
+    <label style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="aAwake" style="width:auto"> Keep the screen on while listening</label>
+  </div>
+  <div class="glass card" style="margin-top:14px">
+    <h2>Voice</h2>
+    <label for="wake">Wake word</label><input id="wake">
+    <label for="voiceSel">Voice</label><select id="voiceSel"></select>
+    <label for="rate">Speech rate</label><input id="rate" type="range" min=".7" max="1.4" step=".05">
+    <label for="pitch">Pitch</label><input id="pitch" type="range" min=".5" max="1.5" step=".05">
+    <div class="row" style="margin:14px 0 0"><button class="btn" id="jvPreset">Jarvis voice preset</button><button class="btn ghost" id="testVoice">Test voice</button></div>
+  </div>
+<p class="muted" style="margin:14px 4px">Mars Jarvis v1.8 · phase two</p>
+</section>
+</main>
+</div>
+<dialog id="dlg"><h2>Edit note</h2><textarea id="dlgText" aria-label="Note text"></textarea><div class="row" style="margin:12px 0 0;justify-content:flex-end"><button class="btn ghost" id="dlgCancel">Cancel</button><button class="btn" id="dlgSave">Save changes</button></div></dialog>
+<dialog id="rdlg"><h2>Edit research</h2>
+<label for="rdTitle">Title</label><input id="rdTitle"><label for="rdUrl">Link</label><input id="rdUrl"><label for="rdNotes">Notes</label><textarea id="rdNotes"></textarea><label for="rdTags">Tags</label><input id="rdTags">
+<div class="row" style="margin:14px 0 0;justify-content:flex-end"><button class="btn ghost" id="rdCancel">Cancel</button><button class="btn" id="rdSave">Save changes</button></div></dialog>
+<div id="standby" hidden><div class="holo-wrap sb"><canvas class="holo-cv" aria-hidden="true"></canvas></div><div id="sbClock"></div><div id="sbText">Say “jarvis”</div><div id="sbHint">Tap anywhere to exit</div></div>
+<div id="launch" class="glass" hidden><span id="launchTxt"></span><a id="launchGo" class="btn" href="#">Open</a><button class="btn ghost sm" id="launchX" aria-label="Dismiss">✕</button></div>
+<div id="toast" class="glass"></div>
+
+<script>
+'use strict';
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const FILE='jarvis_data.json',SCOPE='https://www.googleapis.com/auth/drive.file openid email';
+const h=(t,a={},...k)=>{const e=document.createElement(t);for(const[n,v]of Object.entries(a)){if(n==='class')e.className=v;else if(n.startsWith('on'))e.addEventListener(n.slice(2),v);else if(v!=null&&v!==false)e.setAttribute(n,v===true?'':v)}for(const c of k.flat())e.append(c&&c.nodeType?c:document.createTextNode(c??''));return e};
+const blank=()=>({notes:[],tasks:[],research:[],contacts:[],settings:{wake:'jarvis',voice:'',rate:.95,pitch:.9,muted:false},conversations:[]});
+const LS_DB='mj_db_v1',LS_TS='mj_db_ts',LS_PREV='mj_db_prev';
+const validDb=d=>!!d&&typeof d==='object'&&!Array.isArray(d)&&Array.isArray(d.notes)&&Array.isArray(d.tasks)&&Array.isArray(d.research);
+const normDb=d=>({...blank(),...d,settings:{...blank().settings,...(d.settings&&typeof d.settings==='object'?d.settings:{})},conversations:Array.isArray(d.conversations)?d.conversations:[],contacts:Array.isArray(d.contacts)?d.contacts:[]});
+function readLocal(){try{const d=JSON.parse(localStorage.getItem(LS_DB)||'null');return validDb(d)?normDb(d):null}catch(e){console.error('Local data unreadable',e);return null}}
+let db=readLocal()||blank(),token=null,tokenClient=null,fileId=null,saveT=null,signedIn=false,creating=null,lastPushed=null;
+function saveLocal(){try{localStorage.setItem(LS_DB,JSON.stringify(db));localStorage.setItem(LS_TS,String(Date.now()))}catch(e){console.warn('saveLocal failed',e)}}
+function mergeDb(local,drive,localWins){
+  const t=x=>x.updated||x.created||0,key=x=>x.id||('~'+JSON.stringify(x)),out={...drive};
+  for(const k of ['notes','tasks','research','conversations','contacts']){
+    const m=new Map();
+    for(const it of drive[k]||[])if(it&&typeof it==='object')m.set(key(it),it);
+    for(const it of local[k]||[]){if(!it||typeof it!=='object')continue;const o=m.get(key(it));if(!o||t(it)>=t(o))m.set(key(it),it)}
+    out[k]=[...m.values()].sort((a,b)=>(b.created||0)-(a.created||0));
+  }
+  out.conversations=out.conversations.slice(0,200);
+  out.settings=localWins?{...drive.settings,...local.settings}:{...local.settings,...drive.settings};
+  return normDb(out)}
+
+/* ---------- toast + sync ---------- */
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove('on'),2600)}
+function sync(label,color){$('#syncLabel').textContent=label;$('#syncDot').style.background=color||''}
+
+/* ---------- Google auth + Drive ---------- */
+async function gfetch(url,opt={}){
+  const r=await fetch(url,{...opt,headers:{...(opt.headers||{}),Authorization:'Bearer '+token}});
+  if(r.status===401){signOut(true);throw new Error('Session expired')}
+  if(!r.ok)throw new Error(await r.text());return r}
+function initAuth(){
+  const id=localStorage.getItem('mj_cid');
+  if(!id||!window.google||!google.accounts)return false;
+  tokenClient=google.accounts.oauth2.initTokenClient({client_id:id,scope:SCOPE,callback:onToken});return true}
+async function signIn(){
+  const id=$('#cid').value.trim();
+  if(!id){go('settings');toast('Paste your Google OAuth client ID first.');return}
+  localStorage.setItem('mj_cid',id);
+  if(!initAuth()){toast('Google sign-in is still loading. Check your connection and try again.');return}
+  tokenClient.requestAccessToken({prompt:signedIn?'':'consent'})}
+async function onToken(resp){
+  if(resp.error){toast('Sign-in failed: '+resp.error);return}
+  token=resp.access_token;signedIn=true;
+  try{const u=await(await gfetch('https://www.googleapis.com/oauth2/v3/userinfo')).json();$('#acct').textContent='Signed in as '+(u.email||'your Google account')}catch{}
+  await memory.load();$('#banner').hidden=true;
+  speak('Drive connected. Memory loaded.')}
+function signOut(expired){
+  if(token&&!expired&&window.google&&google.accounts)google.accounts.oauth2.revoke(token);
+  token=null;signedIn=false;fileId=null;tokenClient=null;$('#acct').textContent=expired===true?'Session expired. Sign in again.':'Not signed in.';
+  sync('Local only');$('#banner').hidden=false}
+
+/* ---------- memory system (Drive-backed) ---------- */
+const memory={
+  async load(){
+    sync('Syncing…','var(--ice)');
+    try{
+      const q=encodeURIComponent(`name='${FILE}' and trashed=false`);
+      const f=(await(await gfetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,modifiedTime)`)).json()).files;
+      if(!f.length){await this.create();sync('Synced','var(--ok)');renderAll();applySettings();return}
+      fileId=f[0].id;
+      const txt=await(await gfetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`)).text();
+      let d=null;try{d=JSON.parse(txt)}catch(e){console.error('Drive data is not valid JSON',e)}
+      if(!validDb(d)){
+        console.error('Drive data has an unexpected shape; leaving the Drive file untouched until you make a change.');
+        const hasLocal=!!localStorage.getItem(LS_DB);
+        toast(hasLocal?'Could not read saved data; kept your local copy.':'Could not read saved data; starting fresh.');
+        if(!hasLocal)db=blank();
+        sync('Sync failed','var(--mars)');renderAll();applySettings();return}
+      const localTs=+localStorage.getItem(LS_TS)||0,driveTs=Date.parse(f[0].modifiedTime)||0,drive=normDb(d);
+      lastPushed=JSON.stringify(drive);
+      db=mergeDb(db,drive,localTs>driveTs);saveLocal();
+      renderAll();applySettings();
+      if(JSON.stringify(db)!==lastPushed)this.save();else sync('Synced','var(--ok)')}
+    catch(e){console.error(e);sync('Sync failed','var(--mars)');toast('Could not load Drive memory.')}},
+  create(){
+    if(fileId)return Promise.resolve(fileId);
+    if(creating)return creating;
+    creating=(async()=>{
+      const b='mjb'+Date.now(),meta={name:FILE,mimeType:'application/json'},payload=JSON.stringify(db);
+      const body=`--${b}\r\nContent-Type: application/json\r\n\r\n${JSON.stringify(meta)}\r\n--${b}\r\nContent-Type: application/json\r\n\r\n${payload}\r\n--${b}--`;
+      const r=await gfetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',{method:'POST',headers:{'Content-Type':'multipart/related; boundary='+b},body});
+      fileId=(await r.json()).id;lastPushed=payload;return fileId})();
+    const clear=()=>{creating=null};creating.then(clear,clear);return creating},
+  save(){
+    saveLocal();
+    if(!signedIn){sync('Local only');return}
+    sync('Syncing…','var(--ice)');clearTimeout(saveT);
+    saveT=setTimeout(async()=>{if(!signedIn)return;try{
+      if(!fileId)await this.create();
+      const body=JSON.stringify(db);
+      if(lastPushed){try{localStorage.setItem(LS_PREV,lastPushed)}catch(e){}}
+      await gfetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`,{method:'PATCH',headers:{'Content-Type':'application/json'},body});
+      lastPushed=body;sync('Synced','var(--ok)')}catch(e){console.error(e);sync('Sync failed','var(--mars)')}},600)},
+  add(key,item){const o={id:crypto.randomUUID(),created:Date.now(),...item};db[key].unshift(o);this.save();renderAll();return o},
+  edit(key,id,patch){const o=db[key].find(x=>x.id===id);if(o){Object.assign(o,patch,{updated:Date.now()});this.save();renderAll()}return o},
+  remove(key,id){db[key]=db[key].filter(x=>x.id!==id);this.save();renderAll()}
+};
+
+/* ---------- reactor ---------- */
+const reactor=s=>{const d=document.createElement('div');d.innerHTML=`<svg class="reactor" style="--s:${s}px" viewBox="0 0 200 200" aria-hidden="true"><circle cx="100" cy="100" r="92" fill="none" stroke="rgba(255,255,255,.12)"/><g class="a"><circle cx="100" cy="100" r="82" fill="none" stroke="#ff6a3c" stroke-width="3" stroke-dasharray="30 18 6 18"/></g><g class="b"><circle cx="100" cy="100" r="64" fill="none" stroke="#5ee1ff" stroke-width="2" stroke-dasharray="4 10"/></g><circle cx="100" cy="100" r="46" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.2)"/><polygon class="core" points="100,70 126,115 74,115"/></svg>`;return d.firstChild};
+$$('.reactor-slot').forEach(e=>e.replaceWith(reactor(e.dataset.s)));
+
+/* ---------- navigation ---------- */
+function go(v){$$('section').forEach(s=>s.classList.toggle('on',s.id===v));$$('nav button').forEach(b=>b.toggleAttribute('aria-current',b.dataset.v===v)||0);$$('nav button').forEach(b=>{if(b.dataset.v===v)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});$('main').scrollTop=0}
+$$('nav button').forEach(b=>b.onclick=()=>go(b.dataset.v));
+
+/* ---------- rendering ---------- */
+const PR={high:0,medium:1,low:2},fmt=t=>new Date(t).toLocaleString([], {dateStyle:'medium',timeStyle:'short'});
+const sortedTasks=()=>[...db.tasks].sort((a,b)=>a.done-b.done||PR[a.priority]-PR[b.priority]||b.created-a.created);
+let noteFilter='';
+function renderNotes(){
+  const q=noteFilter.toLowerCase(),L=db.notes.filter(n=>n.text.toLowerCase().includes(q)),box=$('#noteList');box.replaceChildren();
+  if(!L.length)box.append(h('div',{class:'glass empty'},q?'No notes match your search.':'No notes yet. Write one above or say “Jarvis, add note …”.'));
+  L.forEach((n,i)=>box.append(h('div',{class:'glass item'},h('div',{class:'t'},n.text,h('small',{},fmt(n.updated||n.created))),
+    h('div',{class:'acts'},h('button',{class:'btn sm ghost',onclick:()=>editNote(n)},'Edit'),h('button',{class:'btn sm ghost',onclick:()=>memory.remove('notes',n.id)},'Delete')))))}
+function renderTasks(){
+  const box=$('#taskList');box.replaceChildren();const L=sortedTasks();
+  if(!L.length)box.append(h('div',{class:'glass empty'},'No tasks. Add one above or say “Jarvis, add task …”.'));
+  L.forEach((t,i)=>box.append(h('div',{class:'glass item'+(t.done?' done':'')},
+    h('button',{class:'chk',title:'Complete',onclick:()=>memory.edit('tasks',t.id,{done:!t.done})},t.done?'✓':''),
+    h('div',{class:'t'},`${i+1}. ${t.text}`),
+    h('button',{class:'pri '+t.priority,title:'Change priority',onclick:()=>memory.edit('tasks',t.id,{priority:{high:'medium',medium:'low',low:'high'}[t.priority]})},t.priority),
+    h('button',{class:'btn sm ghost',onclick:()=>memory.remove('tasks',t.id)},'Delete'))))}
+function renderHist(){
+  const fill=(sel,n)=>{const b=$(sel);b.replaceChildren();db.conversations.filter(c=>c.heard&&c.heard.trim()).slice(0,n).forEach(c=>{b.append(h('div',{class:'u'},'You: '+c.heard),h('div',{class:'j'},'Jarvis: '+c.reply))});if(!b.children.length)b.append(h('div',{class:'muted'},'No commands yet.'))};
+  fill('#homeHist',3);fill('#voiceHist',12)}
+function renderAll(){
+  renderNotes();renderTasks();renderResearch();renderHist();renderContacts();
+  $('#sRes').textContent=db.research.length;
+  $('#sNotes').textContent=db.notes.length;$('#sTasks').textContent=db.tasks.filter(t=>!t.done).length;
+  const d0=new Date().setHours(0,0,0,0);$('#sCmds').textContent=db.conversations.filter(c=>c.created>=d0).length}
+function tick(){const d=new Date(),g=d.getHours()<12?'Good morning':d.getHours()<18?'Good afternoon':'Good evening';$('#greet').textContent=g+'. Mars Jarvis is online.';$('#clock').textContent=d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}
+setInterval(tick,5000);tick();
+
+/* research */
+let resFilter='';
+const link=u=>/^https?:\/\//i.test(u)?h('a',{href:u,target:'_blank',rel:'noopener'},u):u;
+const tagList=v=>v.split(',').map(x=>x.trim().replace(/^#/,'')).filter(Boolean);
+function renderResearch(){
+  const q=resFilter.toLowerCase(),box=$('#resList');box.replaceChildren();
+  const L=db.research.filter(r=>[r.title,r.url,r.notes,(r.tags||[]).join(' ')].join(' ').toLowerCase().includes(q));
+  if(!L.length)box.append(h('div',{class:'glass empty'},q?'No research matches your search.':'No research yet. Add a topic above or say “Jarvis, research quantum computing”.'));
+  L.forEach(r=>box.append(h('div',{class:'glass item'},
+    h('div',{class:'t'},h('b',{},r.title),r.url?h('small',{},link(r.url)):'',r.notes?h('div',{},r.notes):'',(r.sources&&r.sources.length)?h('small',{},'Sources: ',...r.sources.flatMap((x,i)=>[i?' · ':'',h('a',{href:x.uri,target:'_blank',rel:'noopener'},x.title||'link')])):'',(r.tags&&r.tags.length)?h('small',{},r.tags.map(t=>'#'+t).join(' ')):'',h('small',{},fmt(r.updated||r.created))),
+    h('div',{class:'acts'},h('button',{class:'btn sm',onclick:()=>researchTopic(r.title,r.id)},'Ask Jarvis'),h('button',{class:'btn sm ghost',onclick:()=>editRes(r)},'Edit'),h('button',{class:'btn sm ghost',onclick:()=>memory.remove('research',r.id)},'Delete')))))}
+function editRes(r){$('#rdTitle').value=r.title;$('#rdUrl').value=r.url||'';$('#rdNotes').value=r.notes||'';$('#rdTags').value=(r.tags||[]).join(', ');$('#rdlg').showModal();
+  $('#rdSave').onclick=()=>{const t=$('#rdTitle').value.trim();if(t){memory.edit('research',r.id,{title:t,url:$('#rdUrl').value.trim(),notes:$('#rdNotes').value.trim(),tags:tagList($('#rdTags').value)});$('#rdlg').close()}}}
+$('#rdCancel').onclick=()=>$('#rdlg').close();
+$('#resAdd').onclick=()=>{const t=$('#resTitle').value.trim();if(!t){toast('Give the research a title.');return}
+  memory.add('research',{title:t,url:$('#resUrl').value.trim(),notes:$('#resNotes').value.trim(),tags:tagList($('#resTags').value)});
+  ['#resTitle','#resUrl','#resNotes','#resTags'].forEach(i=>$(i).value='')};
+$('#resAI').onclick=()=>{const t=$('#resTitle').value.trim();if(!t){toast('Give Jarvis a topic first.');return}$('#resTitle').value='';researchTopic(t,null,'research '+t)};
+$('#resQ').oninput=e=>{resFilter=e.target.value;renderResearch()};
+
+/* notes + tasks UI */
+function editNote(n){$('#dlgText').value=n.text;$('#dlg').showModal();$('#dlgSave').onclick=()=>{const v=$('#dlgText').value.trim();if(v){memory.edit('notes',n.id,{text:v});$('#dlg').close()}}}
+$('#dlgCancel').onclick=()=>$('#dlg').close();
+$('#noteAdd').onclick=()=>{const v=$('#noteIn').value.trim();if(v){memory.add('notes',{text:v});$('#noteIn').value=''}};
+$('#noteQ').oninput=e=>{noteFilter=e.target.value;renderNotes()};
+const addTask=()=>{const v=$('#taskIn').value.trim();if(v){memory.add('tasks',{text:v,priority:$('#taskPri').value,done:false});$('#taskIn').value=''}};
+$('#taskAdd').onclick=addTask;$('#taskIn').onkeydown=e=>{if(e.key==='Enter')addTask()};
+
+/* ---------- speech out ---------- */
+let speaking=false,speakEnd=0,sbOpen=false,wl=null;
+function britishVoice(){if(!('speechSynthesis' in window))return;const L=speechSynthesis.getVoices().filter(v=>/^en[-_]GB/i.test(v.lang));return L.find(v=>/male|daniel|george|ryan|arthur|gbb|gbd|rjs/i.test(v.name)&&!/female/i.test(v.name))||L[0]}
+function voices(){if(!('speechSynthesis' in window))return;const s=$('#voiceSel');s.replaceChildren(h('option',{value:''},'System default'));speechSynthesis.getVoices().forEach(v=>s.append(h('option',{value:v.name,selected:v.name===db.settings.voice},`${v.name} (${v.lang})`)))}
+if('speechSynthesis' in window){speechSynthesis.onvoiceschanged=voices;voices()}
+function speak(t){
+  if(!('speechSynthesis' in window)||db.settings.muted)return;
+  speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);
+  let v=speechSynthesis.getVoices().find(v=>v.name===db.settings.voice);if(!v&&!db.settings.voice)v=britishVoice();if(v){u.voice=v;u.lang=v.lang}u.rate=+db.settings.rate||1;u.pitch=+db.settings.pitch||1;
+  u.onstart=()=>{speaking=true;setState()};u.onend=u.onerror=()=>{speaking=false;speakEnd=Date.now();setState()};speechSynthesis.speak(u)}
+let thinking=false;
+function setState(){document.body.dataset.state=thinking?'thinking':db.settings.muted&&!listening?'muted':speaking?'speaking':listening?'listening':'idle';
+  $('#stateLabel').textContent={idle:'Idle',listening:'Listening',speaking:'Speaking',muted:'Muted',thinking:'Thinking'}[document.body.dataset.state]}
+
+$$('.holo-wrap:not(.sb)').forEach(w=>{w.addEventListener('click',()=>$('#listenBtn').click());w.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();$('#listenBtn').click()}})});
+
+/* ---------- speech in ---------- */
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+let rec=null,listening=false,ptt=false,pttT=null;
+$('#voiceSupport').textContent=SR?'':'Speech recognition is not supported in this browser. Use Chrome or Edge, or type commands.';
+function startRec(){
+  if(!SR||rec)return;rec=new SR();rec.continuous=true;rec.interimResults=false;rec.lang='en-US';
+  rec.onresult=e=>{let live='';for(let i=e.resultIndex;i<e.results.length;i++){const r=e.results[i];if(r.isFinal)heard(r[0].transcript);else live+=r[0].transcript}if(live&&!armed)$('#heard').textContent='… '+live};
+  rec.onerror=e=>{if(e.error==='not-allowed'||e.error==='service-not-allowed'){listening=false;syncMic();toast('Microphone access was blocked.')}};
+  rec.onend=()=>{rec=null;if((listening||ptt)&&!document.hidden)setTimeout(startRec,60)};
+  try{rec.start()}catch{rec=null}}
+function stopRec(){if(rec){const r=rec;rec=null;r.onend=null;r.stop()}}
+function syncMic(){const b=$('#listenBtn');b.textContent=listening?'Stop listening':'Start listening';b.setAttribute('aria-pressed',listening);b.classList.toggle('on',listening);setState();keepAwake(listening||sbOpen,sbOpen)}
+$('#listenBtn').onclick=()=>{listening=!listening;listening?startRec():(!ptt&&stopRec());syncMic();if(listening)$('#heard').textContent=`Listening for “${db.settings.wake}”…`};
+let pttT0=0;
+const pttOn=e=>{e.preventDefault();pttT0=Date.now();try{e.currentTarget.setPointerCapture(e.pointerId)}catch{}clearTimeout(pttT);ptt=true;$('#pttBtn').classList.add('on');startRec();setState();document.body.dataset.state='listening'};
+const pttOff=()=>{if(!ptt)return;pttT=setTimeout(()=>{ptt=false;$('#pttBtn').classList.remove('on');if(!listening)stopRec();setState()},Date.now()-pttT0<400?6000:1800)};
+$('#pttBtn').addEventListener('pointerdown',pttOn);['pointerup','pointerleave','pointercancel'].forEach(ev=>$('#pttBtn').addEventListener(ev,pttOff));
+$('#pttBtn').addEventListener('contextmenu',e=>e.preventDefault());
+$('#muteBtn').onclick=()=>setMute(!db.settings.muted);
+function setMute(m){db.settings.muted=m;if(m){if('speechSynthesis' in window)speechSynthesis.cancel()}$('#muteBtn').textContent=m?'Unmute voice':'Mute voice';$('#muteBtn').setAttribute('aria-pressed',m);memory.save();setState()}
+let armed=false,armT=null;
+function beep(){try{const a=new(window.AudioContext||window.webkitAudioContext)(),o=a.createOscillator(),g=a.createGain();o.frequency.value=880;g.gain.value=.06;o.connect(g);g.connect(a.destination);o.start();o.stop(a.currentTime+.12)}catch{}}
+function heard(raw){
+  if(speaking||thinking||Date.now()-speakEnd<800)return;const t=(raw||'').trim();if(!t)return;const wake=(db.settings.wake||'jarvis').toLowerCase(),i=t.toLowerCase().indexOf(wake);
+  if(i<0){if(ptt||awaiting||armed){armed=false;clearTimeout(armT);$('#heard').textContent='“'+t+'”';run(t)}return}
+  const cmd=t.slice(i+wake.length).replace(/^[\s,.:!]+/,'');
+  if(cmd){armed=false;$('#heard').textContent='“'+t+'”';run(cmd)}
+  else{armed=true;clearTimeout(armT);armT=setTimeout(()=>armed=false,10000);beep();$('#heard').textContent='Yes? Say your command…'}}
+
+/* ---------- command engine ---------- */
+function reply(heardTxt,text){speak(text);toast(text);db.conversations.unshift({id:crypto.randomUUID(),created:Date.now(),heard:heardTxt,reply:text});db.conversations=db.conversations.slice(0,200);memory.save();renderHist();renderAll()}
+const norm=s=>s.replace(/[.!?]+$/,'').trim();
+const findBy=(list,q)=>/^\d+$/.test(q)?list[+q-1]:list.find(x=>(x.text||x.title||'').toLowerCase().includes(q.toLowerCase()));
+let awaiting=null,awaitT=null;
+const fix=s=>s.replace(/^(?:had|ad|at|and|eight|add)\s+(?:a\s+)?(?:not|nut|node|nope|note|memory note)\b/i,'add note').replace(/^adnut\b/i,'add note').replace(/^(?:had|ad|at|and|add)\s+(?:a\s+)?(?:tusk|desk|tasks?)\b/i,'add task').replace(/^(?:save|safe)\s+(?:the\s+)?(?:not|nut|node|note)\b/i,'save note');
+function run(input){
+  if(!input||!input.trim())return;
+  if(awaiting){const k=awaiting;awaiting=null;clearTimeout(awaitT);const t=norm(input);if(k==='note'){memory.add('notes',{text:t});return reply(input,'I have saved your note.')}if(k==='research'){memory.add('research',{title:t,url:'',notes:'',tags:[]});return reply(input,'Research saved.')}memory.add('tasks',{text:t,priority:'medium',done:false});return reply(input,'Task added.')}
+  const c=fix(norm(input)),say=t=>reply(input,t);let m;
+  if(/^(?:add|save)\s+note$/i.test(c)){awaiting='note';awaitT=setTimeout(()=>awaiting=null,20000);return say('What should the note say?')}
+  if(/^(?:add|new)\s+research$/i.test(c)){awaiting='research';awaitT=setTimeout(()=>awaiting=null,20000);return say('What is the research topic?')}
+  if(/^(?:show|open|list)(?:\s+(?:my|all))?\s+research$/i.test(c)){resFilter='';$('#resQ').value='';go('research');renderResearch();return say(`You have ${db.research.length} research entr${db.research.length===1?'y':'ies'}.`+(db.research[0]?` The latest is ${db.research[0].title}.`:''))}
+  if(m=c.match(/^(?:search|find)\s+research(?:\s+for)?\s+(.+)/i)){resFilter=m[1];$('#resQ').value=m[1];go('research');renderResearch();const n=db.research.filter(r=>[r.title,r.notes,(r.tags||[]).join(' ')].join(' ').toLowerCase().includes(m[1].toLowerCase())).length;return say(`I found ${n} research entr${n===1?'y':'ies'} matching ${m[1]}.`)}
+  if(m=c.match(/^delete\s+research\s+(.+)/i)){const r=findBy(db.research,m[1]);if(!r)return say('I could not find that research.');memory.remove('research',r.id);return say('Research deleted.')}
+  if(m=c.match(/^(?:(add|save|new)\s+)?research(?:\s+(?:on|about))?\s+(.+)/i)){
+    if(!m[1]&&brainReady())return researchTopic(m[2],null,input);
+    memory.add('research',{title:m[2],url:'',notes:'',tags:[]});return say(`Research saved: ${m[2]}.`)}
+  if(m=c.match(/^(?:deep dive on|dive into|look into|investigate|find out about)\s+(.+)/i)){if(!brainReady())return say('I need my brain connected for that. Add your Gemini key in Settings.');return researchTopic(m[1],null,input)}
+  if(/^add\s+task$/i.test(c)){awaiting='task';awaitT=setTimeout(()=>awaiting=null,20000);return say('What is the task?')}
+  const lvl=p=>p==='urgent'?'high':p;
+  if(m=c.match(/^(?:add|save|create|take|new)\s+(?:a\s+)?note(?:\s+(?:that|about))?\s+(.+)/i)){memory.add('notes',{text:m[1]});return say('I have saved your note.')}
+  if(m=c.match(/^(?:search|find)\s+notes?(?:\s+for)?\s+(.+)/i)){noteFilter=m[1];$('#noteQ').value=m[1];go('memory');renderNotes();const n=db.notes.filter(x=>x.text.toLowerCase().includes(m[1].toLowerCase())).length;return say(`I found ${n} note${n===1?'':'s'} matching ${m[1]}.`)}
+  if(/^(?:show|open|list|read)(?:\s+(?:my|all))?\s+notes?$/i.test(c)){noteFilter='';$('#noteQ').value='';go('memory');renderNotes();return say(`You have ${db.notes.length} note${db.notes.length===1?'':'s'}.`+(db.notes[0]?` The latest says: ${db.notes[0].text}`:''))}
+  if(/^delete\s+(?:the\s+)?(?:last|latest)\s+note$/i.test(c)){if(!db.notes.length)return say('There are no notes to delete.');memory.remove('notes',db.notes[0].id);return say('Your latest note is deleted.')}
+  if(m=c.match(/^delete\s+note\s+(.+)/i)){const n=findBy(db.notes,m[1]);if(!n)return say('I could not find that note.');memory.remove('notes',n.id);return say('Note deleted.')}
+  if(m=c.match(/^(?:add|create|new)\s+(?:an?\s+)?(?:(high|medium|low|urgent)\s+priority\s+)?task\s+(?:to\s+|that\s+)?(.+)/i)){
+    let txt=m[2],p=lvl((m[1]||'').toLowerCase()),t;
+    if(t=txt.match(/^(.*?)\s*(?:with\s+|,\s*)?(high|medium|low|urgent)\s+priority$/i)){txt=t[1];p=lvl(t[2].toLowerCase())}
+    memory.add('tasks',{text:txt,priority:p||'medium',done:false});return say(`Task added with ${p||'medium'} priority.`)}
+  if(m=c.match(/^(?:set\s+)?(?:the\s+)?priority\s+(?:of\s+)?(?:task\s+)?(.+?)\s+(?:to\s+)?(high|medium|low|urgent)$/i)||c.match(/^make\s+task\s+(.+?)\s+(high|medium|low|urgent)\s+priority$/i)){
+    const t=findBy(sortedTasks(),m[1]);if(!t)return say('I could not find that task.');memory.edit('tasks',t.id,{priority:lvl(m[2].toLowerCase())});return say(`Priority set to ${lvl(m[2].toLowerCase())}.`)}
+  if(m=c.match(/^(?:complete|finish|mark(?:\s+done)?|done\s+with)\s+task\s+(.+)/i)){const t=findBy(sortedTasks(),m[1]);if(!t)return say('I could not find that task.');memory.edit('tasks',t.id,{done:true});return say('Task completed.')}
+  if(m=c.match(/^delete\s+task\s+(.+)/i)){const t=findBy(sortedTasks(),m[1]);if(!t)return say('I could not find that task.');memory.remove('tasks',t.id);return say('Task deleted.')}
+  if(/^(?:show|open|list|read)(?:\s+(?:my|all))?\s+tasks?$/i.test(c)){go('tasks');const o=db.tasks.filter(t=>!t.done),top=sortedTasks().find(t=>!t.done);return say(`You have ${o.length} open task${o.length===1?'':'s'}.`+(top?` Top priority: ${top.text}`:''))}
+  if(m=c.match(/^(?:go\s+to|open|show)\s+(home|memory|notes|tasks|research|voice|settings)$/i)){go(m[1]==='notes'?'memory':m[1].toLowerCase());return say('Opening '+m[1]+'.')}
+  if(m=c.match(/^(?:call|phone|dial|ring)\s+(.+)/i))return say(doCall(m[1]));
+  if(m=c.match(/^(?:text|message|sms)\s+(.+?)\s+(?:saying|that says|that|say|:)\s+(.+)/i))return say(doText(m[1],m[2]));
+  if(/^(?:pause|stop\s+(?:the\s+)?(?:music|song|spotify|playback))(?:\s+(?:the\s+)?(?:music|song|spotify|playback))?$/i.test(c))return spReady()?spControl('pause',input):say('Connect Spotify in Settings first.');
+  if(/^(?:(?:resume|continue|unpause)(?:\s+(?:the\s+)?(?:music|song|spotify|playback))?|play|play\s+(?:music|spotify))$/i.test(c))return spReady()?spControl('resume',input):say('Connect Spotify in Settings first.');
+  if(/^(?:skip|next)(?:\s+(?:the\s+)?(?:song|track|music))?$/i.test(c))return spReady()?spControl('next',input):say('Connect Spotify in Settings first.');
+  if(/^(?:previous|go\s+back)(?:\s+(?:the\s+)?(?:song|track))?$/i.test(c))return spReady()?spControl('prev',input):say('Connect Spotify in Settings first.');
+  if(m=c.match(/^(?:turn\s+)?shuffle\s+(on|off)$/i))return spReady()?spControl('shuffle_'+m[1].toLowerCase(),input):say('Connect Spotify in Settings first.');
+  if(/^what(?:'s|\s+is)\s+(?:this\s+song|playing|this)$|^what\s+song\s+is\s+(?:this|playing)$/i.test(c))return spReady()?spControl('now',input):say('Connect Spotify in Settings first.');
+  if(m=c.match(/^play\s+(.+?)(?:\s+on\s+(spotify|youtube music|youtube))?$/i)){const svc=(m[2]||'').toLowerCase();if((!svc||svc==='spotify')&&spReady())return spPlay(m[1],input);return say(doPlay(m[1],m[2]))}
+  if(m=c.match(/^(?:navigate|directions|take me|drive)\s+(?:to\s+)?(.+)/i))return say(doNavigate(m[1]));
+  if(m=c.match(/^(?:open|launch|start)\s+(.+)/i))return say(doOpenApp(m[1]));
+  if(/^(?:standby|stand by|go to standby|standby mode|sleep mode)$/i.test(c)){reply(input,'Standing by.');return openStandby()}
+  if(/^(?:wake up|exit standby)$/i.test(c)){closeStandby();return say('Welcome back.')}
+  if(/^(?:mute|be quiet)$/i.test(c)){reply(input,'Muted.');return setMute(true)}
+  if(/^unmute$/i.test(c)){setMute(false);return say('Voice is back on.')}
+  if(/^(?:what(?:'s| is) the )?time$/i.test(c))return say('It is '+new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})+'.');
+  if(/^(?:hello|hi|hey)$/i.test(c))return say('At your service.');
+  if(brainReady())return askBrain(input);
+  say('I did not understand that. Try “add note” or “add task”.')}
+/* ---------- phone actions ---------- */
+const isAndroid=/Android/i.test(navigator.userAgent),enc=encodeURIComponent,cap=t=>t.replace(/\b\w/g,c=>c.toUpperCase());
+const APPS={spotify:'com.spotify.music',youtube:'com.google.android.youtube','youtube music':'com.google.android.apps.youtube.music',whatsapp:'com.whatsapp',maps:'com.google.android.apps.maps','google maps':'com.google.android.apps.maps',gmail:'com.google.android.gm',chrome:'com.android.chrome',instagram:'com.instagram.android',telegram:'org.telegram.messenger',tiktok:'com.zhiliaoapp.musically',netflix:'com.netflix.mediaclient',facebook:'com.facebook.katana',twitter:'com.twitter.android',x:'com.twitter.android',snapchat:'com.snapchat.android',photos:'com.google.android.apps.photos','google photos':'com.google.android.apps.photos',drive:'com.google.android.apps.docs','google drive':'com.google.android.apps.docs',calendar:'com.google.android.calendar',clock:'com.google.android.deskclock',messages:'com.google.android.apps.messaging',phone:'com.google.android.dialer',contacts:'com.google.android.contacts','play store':'com.android.vending',zoom:'us.zoom.videomeetings',uber:'com.ubercab',linkedin:'com.linkedin.android',reddit:'com.reddit.frontpage',discord:'com.discord',pinterest:'com.pinterest',amazon:'com.amazon.mShop.android.shopping',gemini:'com.google.android.apps.bard',chatgpt:'com.openai.chatgpt',claude:'com.anthropic.claude'};
+function customApps(){const o={};(localStorage.getItem('mj_apps')||'').split('\n').forEach(l=>{const m=l.match(/^\s*(.+?)\s*=\s*([\w.]+)\s*$/);if(m)o[m[1].toLowerCase()]=m[2]});return o}
+function findApp(name){const n=name.toLowerCase().replace(/^(the|my)\s+/,'').replace(/\s+app$/,'').trim(),all={...APPS,...customApps()};if(all[n])return[n,all[n]];const k=Object.keys(all).find(x=>x.length>2&&(n.includes(x)||x.includes(n)));return k?[k,all[k]]:null}
+const appIntent=pkg=>`intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=${pkg};S.browser_fallback_url=${enc('https://play.google.com/store/apps/details?id='+pkg)};end`;
+const webIntent=(https,pkg)=>isAndroid?`intent://${https.replace(/^https:\/\//,'')}#Intent;scheme=https;package=${pkg};S.browser_fallback_url=${enc(https)};end`:https;
+function launch(url,label,force,btn){
+  if(!force&&navigator.userActivation&&navigator.userActivation.isActive){$('#launch').hidden=true;location.href=url;return false}
+  $('#launchTxt').textContent=label;$('#launchGo').href=url;$('#launchGo').textContent=btn||'Open';$('#launch').hidden=false;
+  clearTimeout(launch.t);launch.t=setTimeout(()=>$('#launch').hidden=true,30000);return true}
+$('#launchX').onclick=()=>$('#launch').hidden=true;$('#launchGo').addEventListener('click',()=>setTimeout(()=>$('#launch').hidden=true,400));
+const tapNote=tap=>tap?' Tap the button to confirm.':'';
+function doOpenApp(name){
+  if(!isAndroid)return 'Opening apps works on an Android phone.';
+  if(/^camera$/i.test(name.trim())){const t=launch('intent:#Intent;action=android.media.action.IMAGE_CAPTURE;end','Open Camera');return 'Opening the camera.'+tapNote(t)}
+  if(/^phone settings$|^android settings$/i.test(name.trim())){const t=launch('intent:#Intent;action=android.settings.SETTINGS;end','Open phone settings');return 'Opening phone settings.'+tapNote(t)}
+  const a=findApp(name);if(!a)return `I do not know an app called ${name.replace(/^(the|my)\s+/i,'').replace(/\s+app$/i,'')}. Add it under My app shortcuts in Settings.`;
+  const t=launch(appIntent(a[1]),'Open '+cap(a[0]));return `Opening ${cap(a[0])}.`+tapNote(t)}
+const findContact=q=>{const n=q.toLowerCase().replace(/^(my|the)\s+/,'').trim();return db.contacts.find(c=>c.name.toLowerCase()===n)||db.contacts.find(c=>c.name.toLowerCase().startsWith(n))||db.contacts.find(c=>c.name.toLowerCase().includes(n))};
+function target(q){const digits=q.replace(/[\s\-().]/g,'');if(/^\+?\d{3,}$/.test(digits))return{name:digits,tel:digits};const c=findContact(q);return c?{name:c.name,tel:c.tel.replace(/[^\d+]/g,'')}:null}
+function doCall(q){const t=target(q);if(!t)return `I could not find ${q} in your contacts. Import them in Settings.`;launch('tel:'+t.tel,'Call '+t.name+' ('+t.tel+')',true,'Call');return `Ready to call ${t.name}. Tap Call to confirm.`}
+function doText(q,msg){const t=target(q);if(!t)return `I could not find ${q} in your contacts. Import them in Settings.`;launch('sms:'+t.tel+(msg?'?body='+enc(msg):''),'Text '+t.name+(msg?': '+msg:''),true,'Open message');return `Message to ${t.name} is ready. Tap to send it from your messages app.`}
+function doPlay(query,svc){
+  svc=(svc||'spotify').toLowerCase().replace(/\s+/g,'_');
+  const S={spotify:['Spotify','https://open.spotify.com/search/'+enc(query),'com.spotify.music'],youtube_music:['YouTube Music','https://music.youtube.com/search?q='+enc(query),'com.google.android.apps.youtube.music'],youtube:['YouTube','https://www.youtube.com/results?search_query='+enc(query),'com.google.android.youtube']}[svc]||null;
+  if(!S)return doPlay(query,'spotify');
+  const t=launch(webIntent(S[1],S[2]),`Search ${S[0]} for ${query}`);return `Searching ${S[0]} for ${query}. Tap play on the result.`+tapNote(t)}
+function doNavigate(place){const t=launch(webIntent('https://www.google.com/maps/dir/?api=1&destination='+enc(place),'com.google.android.apps.maps'),'Navigate to '+place);return `Starting directions to ${place}.`+tapNote(t)}
+function renderContacts(){
+  const L=$('#ctList');if(!L)return;L.replaceChildren();$('#ctCount').textContent=db.contacts.length?db.contacts.length+' contact'+(db.contacts.length===1?'':'s')+' saved.':'No contacts yet.';
+  db.contacts.slice(0,12).forEach(c=>L.append(h('div',{class:'glass item'},h('div',{class:'t'},c.name,h('small',{},c.tel)),h('button',{class:'btn sm ghost',onclick:()=>memory.remove('contacts',c.id)},'Delete'))))}
+$('#ctAdd').onclick=()=>{const n=$('#ctName').value.trim(),t=$('#ctTel').value.trim();if(!n||!/\d{3,}/.test(t)){toast('Enter a name and a phone number.');return}memory.add('contacts',{name:n,tel:t});$('#ctName').value=$('#ctTel').value=''};
+$('#ctClear').onclick=()=>{if(db.contacts.length&&confirm('Remove all '+db.contacts.length+' contacts from Jarvis?')){db.contacts=[];memory.save();renderAll()}};
+$('#ctImport').onclick=async()=>{
+  if(!('contacts' in navigator&&'ContactsManager' in window)){toast('Contact import needs Chrome on Android. You can add contacts by hand.');return}
+  try{const picked=await navigator.contacts.select(['name','tel'],{multiple:true});let n=0;
+    for(const c of picked){const name=(c.name&&c.name[0]||'').trim(),tel=(c.tel&&c.tel[0]||'').trim();if(name&&tel&&!db.contacts.some(x=>x.name===name&&x.tel===tel)){db.contacts.unshift({id:crypto.randomUUID(),created:Date.now(),name,tel});n++}}
+    memory.save();renderAll();toast(n+' contact'+(n===1?'':'s')+' imported.')}catch(e){if(e&&e.name!=='AbortError')toast('Could not import contacts.')}};
+$('#appMap').value=localStorage.getItem('mj_apps')||'';$('#appMap').onchange=e=>localStorage.setItem('mj_apps',e.target.value);
+
+/* ---------- Spotify ---------- */
+const SP_SCOPE='user-modify-playback-state user-read-playback-state user-read-currently-playing playlist-read-private';
+const spRedirect=()=>location.origin+location.pathname.replace(/index\.html$/,'');
+const spTokens=()=>{try{return JSON.parse(localStorage.getItem('mj_sp')||'null')}catch(e){return null}};
+const spReady=()=>{const t=spTokens();return !!(t&&t.refresh)};
+let pendingPlay=null;
+const b64u=buf=>btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+async function spConnect(){
+  const id=$('#spId').value.trim()||localStorage.getItem('mj_sp_id')||'';
+  if(!/^\w{20,64}$/.test(id)){toast('Paste your Spotify client ID first.');return}
+  localStorage.setItem('mj_sp_id',id);
+  const v=b64u(crypto.getRandomValues(new Uint8Array(48))),c=b64u(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(v))),st=b64u(crypto.getRandomValues(new Uint8Array(12)));
+  localStorage.setItem('mj_sp_v',v);localStorage.setItem('mj_sp_state',st);
+  location.href='https://accounts.spotify.com/authorize?'+new URLSearchParams({response_type:'code',client_id:id,scope:SP_SCOPE,redirect_uri:spRedirect(),code_challenge_method:'S256',code_challenge:c,state:st})}
+async function spToken(body){
+  const r=await fetch('https://accounts.spotify.com/api/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams(body)}),j=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error(j.error_description||j.error||('HTTP '+r.status));
+  const old=spTokens()||{};localStorage.setItem('mj_sp',JSON.stringify({access:j.access_token,refresh:j.refresh_token||old.refresh,exp:Date.now()+(j.expires_in||3600)*1000-30000}));return j}
+async function spAccess(){
+  const t=spTokens();if(!t)throw new Error('not connected');
+  if(t.exp>Date.now())return t.access;
+  try{await spToken({grant_type:'refresh_token',refresh_token:t.refresh,client_id:localStorage.getItem('mj_sp_id')})}catch(e){localStorage.removeItem('mj_sp');spStatusUpdate();throw new Error('expired')}
+  return spTokens().access}
+async function spFetch(path,opt={}){const a=await spAccess();return fetch('https://api.spotify.com/v1'+path,{...opt,headers:{Authorization:'Bearer '+a,...(opt.headers||{})}})}
+async function spError(r){const j=await r.json().catch(()=>({})),e=new Error((j.error&&j.error.message)||('HTTP '+r.status));e.status=r.status;e.reason=j.error&&j.error.reason;return e}
+function spErr(e){
+  const m=String(e&&e.message||e);
+  if(e&&(e.reason==='NO_ACTIVE_DEVICE'||e.status===404))return 'Spotify is not active on your phone. Open the Spotify app, then ask me again.';
+  if(e&&e.reason==='PREMIUM_REQUIRED')return 'Spotify says that needs Premium.';
+  if(/not connected|expired/i.test(m)||(e&&e.status===401))return 'Spotify needs reconnecting. Open Settings and tap Connect Spotify.';
+  if(e&&e.status===429)return 'Spotify is busy. Try again in a moment.';
+  return 'Spotify said: '+m.slice(0,100)}
+function spStatusUpdate(){const el=$('#spStatus');if(el)el.textContent=spReady()?'Connected. Open the Spotify app on your phone before asking for music.':'Not connected.'}
+const spNorm=t=>t.toLowerCase().replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+async function spFind(q){
+  let type=null,term=q.trim(),artist=null,mine=false,m=term.match(/^(?:the\s+)?(?:(my)\s+)?(album|playlist|artist|song|track)\s+(.+)/i);
+  if(m){mine=!!m[1];type=m[2].toLowerCase();if(type==='song')type='track';term=m[3]}
+  else if((m=term.match(/^my\s+(.+?)\s+playlist$/i))){type='playlist';mine=true;term=m[1]}
+  m=term.match(/^(.+?)\s+by\s+(.+)$/i);if(m&&(!type||type==='track'||type==='album')){term=m[1];artist=m[2]}
+  if(type==='playlist'&&mine){const r=await spFetch('/me/playlists?limit=50');if(r.ok){const L=((await r.json()).items||[]).filter(Boolean),k=spNorm(term),pl=L.find(x=>spNorm(x.name)===k)||L.find(x=>spNorm(x.name).includes(k));if(pl)return{context:pl.uri,label:pl.name+' (your playlist)'}}}
+  const r=await spFetch('/search?'+new URLSearchParams({q:artist?term+' '+artist:term,type:type||'track,artist',limit:'5'}));
+  if(!r.ok)throw await spError(r);
+  const j=await r.json(),first=k=>((j[k]||{}).items||[]).find(Boolean);
+  if(type==='playlist'){const x=first('playlists');return x?{context:x.uri,label:x.name}:null}
+  if(type==='album'){const x=first('albums');return x?{context:x.uri,label:x.name+' by '+((x.artists||[]).map(a=>a.name).join(' and ')||'unknown')}:null}
+  if(type==='artist'){const x=first('artists');return x?{context:x.uri,label:x.name}:null}
+  const a=first('artists'),t=first('tracks');
+  if(type!=='track'&&a&&!artist&&spNorm(a.name)===spNorm(term))return{context:a.uri,label:a.name};
+  if(t)return{uris:[t.uri],label:t.name+' by '+((t.artists||[]).map(x=>x.name).join(' and ')||'unknown')};
+  return a?{context:a.uri,label:a.name}:null}
+async function spDevice(){
+  const r=await spFetch('/me/player/devices');if(!r.ok)throw await spError(r);
+  const L=(await r.json()).devices||[];if(!L.length)return null;
+  const last=localStorage.getItem('mj_sp_dev');
+  return L.find(d=>d.is_active)||L.find(d=>d.id===last)||L.find(d=>/smartphone/i.test(d.type))||L[0]}
+async function spStart(dev,pick){
+  if(!dev.is_active){await spFetch('/me/player',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({device_ids:[dev.id],play:false})});await new Promise(r=>setTimeout(r,500))}
+  const r=await spFetch('/me/player/play?device_id='+enc(dev.id),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(pick.uris?{uris:pick.uris}:{context_uri:pick.context})});
+  if(!r.ok)throw await spError(r);localStorage.setItem('mj_sp_dev',dev.id)}
+async function spPlay(query,heardTxt,quiet,tries){
+  heardTxt=heardTxt||('play '+query);thinking=true;setState();$('#heard').textContent='Finding '+query+'…';
+  let msg,ok=false;
+  try{
+    const pick=await spFind(query);
+    if(!pick)msg=`I could not find ${query} on Spotify.`;
+    else{const dev=await spDevice();
+      if(!dev){pendingPlay={q:query,heard:heardTxt,t:Date.now(),n:(tries||0)+1};if(isAndroid)launch(appIntent('com.spotify.music'),'Open Spotify, then come back to Jarvis');msg='I cannot see Spotify running. Open it, then come back and I will start it.'}
+      else{await spStart(dev,pick);ok=true;pendingPlay=null;msg=`Playing ${pick.label} on Spotify.`}}
+  }catch(e){msg=spErr(e)}
+  thinking=false;setState();$('#heard').textContent='Waiting for “'+(db.settings.wake||'jarvis')+'”…';
+  if(!ok||!quiet)reply(heardTxt,msg)}
+async function spControl(action,heardTxt){
+  const M={pause:['PUT','/me/player/pause','Paused.'],resume:['PUT','/me/player/play','Resuming.'],next:['POST','/me/player/next','Skipping.'],prev:['POST','/me/player/previous','Going back.'],shuffle_on:['PUT','/me/player/shuffle?state=true','Shuffle is on.'],shuffle_off:['PUT','/me/player/shuffle?state=false','Shuffle is off.']};
+  let msg;try{
+    if(action==='now'){const r=await spFetch('/me/player/currently-playing');if(r.status===204)msg='Nothing is playing right now.';else if(!r.ok)throw await spError(r);else{const j=await r.json(),it=j&&j.item;msg=it?`This is ${it.name} by ${((it.artists||[]).map(a=>a.name).join(' and '))||'unknown'}.`:'Nothing is playing right now.'}}
+    else{const [meth,path,ok]=M[action],r=await spFetch(path,{method:meth});if(!r.ok)throw await spError(r);msg=ok}
+  }catch(e){msg=spErr(e)}
+  reply(heardTxt,msg)}
+function doPlayAny(q,svc){if((!svc||/spotify/i.test(svc))&&spReady()){spPlay(q,'play '+q,true);return 'Playing '+q+' on Spotify.'}return doPlay(q,svc)}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&pendingPlay&&Date.now()-pendingPlay.t<120000&&pendingPlay.n<3){const p=pendingPlay;pendingPlay=null;setTimeout(()=>spPlay(p.q,p.heard,false,p.n),1500)}});
+$('#spRedirect').textContent=spRedirect();$('#spId').value=localStorage.getItem('mj_sp_id')||'';spStatusUpdate();
+$('#spConnect').onclick=spConnect;
+$('#spCopy').onclick=()=>{try{navigator.clipboard.writeText(spRedirect());toast('Redirect URI copied.')}catch(e){toast('Press and hold the address to copy it.')}};
+$('#spDisc').onclick=()=>{['mj_sp','mj_sp_v','mj_sp_state','mj_sp_dev'].forEach(k=>localStorage.removeItem(k));spStatusUpdate();toast('Spotify disconnected.')};
+$('#spTest').onclick=async()=>{if(!spReady()){toast('Connect Spotify first.');return}try{const r=await spFetch('/me/player/devices');if(!r.ok)throw await spError(r);const L=(await r.json()).devices||[];toast(L.length?'Devices: '+L.map(d=>d.name).join(', '):'No Spotify device is awake. Open the Spotify app first.')}catch(e){toast(spErr(e))}};
+(async()=>{
+  const q=new URLSearchParams(location.search);if(!q.has('code')&&!q.has('error'))return;
+  const st=localStorage.getItem('mj_sp_state'),v=localStorage.getItem('mj_sp_v');
+  try{history.replaceState({},'',spRedirect())}catch(e){}
+  if(q.has('error')){toast('Spotify: '+q.get('error'));return}
+  if(!st||!v||q.get('state')!==st){toast('Spotify sign-in could not be verified. Try again.');return}
+  try{await spToken({grant_type:'authorization_code',code:q.get('code'),redirect_uri:spRedirect(),client_id:localStorage.getItem('mj_sp_id'),code_verifier:v});
+    localStorage.removeItem('mj_sp_v');localStorage.removeItem('mj_sp_state');go('settings');spStatusUpdate();toast('Spotify connected.')}
+  catch(e){toast(String(e.message||e).slice(0,120))}})();
+
+/* ---------- conversational brain (Gemini) ---------- */
+const GURL='https://generativelanguage.googleapis.com/v1beta/';
+const brainKey=()=>localStorage.getItem('mj_gemini')||'';
+const brainReady=()=>!!brainKey()&&db.settings.brain!==false&&navigator.onLine;
+const SYS="You are J.A.R.V.I.S., the calm, dry-witted British AI inside the user's personal dashboard called Mars Jarvis. Your replies are spoken aloud: plain text only, no markdown, no lists, at most three short sentences. Be warm, precise and a little witty. You can manage the dashboard by returning actions: add_note (text), add_task (text, priority), complete_task and delete_task (query = the task number or words from it), set_priority (query, priority), delete_note (query), add_research (text = title, plus url, notes, tags), open_page (text = home, memory, tasks, research, voice or settings), and phone actions: open_app (text = app name), call (text = contact name or number), text_message (text = contact name or number, notes = the message), play_music (text = song, artist or search; query = spotify, youtube_music or youtube, default spotify), navigate (text = place). Phone actions open the user's apps and ask them to tap to confirm, so word those replies in the present tense, for example 'Opening Spotify for you.' Only return an action when the user clearly asks for it, and make your reply confirm it in the past tense. Never claim to have done something you did not return as an action. Use the dashboard state to answer questions about tasks, notes and research. If you do not know something, say so plainly. The user speaks through speech recognition, so interpret transcription errors generously.";
+const SCHEMA={type:'OBJECT',properties:{reply:{type:'STRING'},actions:{type:'ARRAY',items:{type:'OBJECT',properties:{type:{type:'STRING',enum:['add_note','add_task','complete_task','delete_task','set_priority','delete_note','add_research','open_page','open_app','call','text_message','play_music','navigate']},text:{type:'STRING'},priority:{type:'STRING',enum:['high','medium','low']},query:{type:'STRING'},url:{type:'STRING'},notes:{type:'STRING'},tags:{type:'ARRAY',items:{type:'STRING'}}},required:['type']}}},required:['reply']};
+const quotaMsg=em=>{const m=em.match(/retry in ([\d.]+)\s*s/i);return 'Gemini quota reached. '+(m?'Try again in about '+Math.ceil(m[1])+' seconds.':'Wait a minute, or pick a different model in Settings.')};
+const altModels=()=>{try{return JSON.parse(localStorage.getItem('mj_models')||'[]').filter(n=>n!==db.settings.model&&!/preview|exp/i.test(n))}catch{return[]}};
+function brainContext(){
+  const open=sortedTasks().filter(t=>!t.done).slice(0,15).map((t,i)=>`${i+1}. ${t.text} [${t.priority}]`);
+  return `Time: ${new Date().toLocaleString()}\nOpen tasks:\n${open.join('\n')||'none'}\nTotal notes: ${db.notes.length}. Latest notes: ${JSON.stringify(db.notes.slice(0,6).map(n=>n.text.slice(0,140)))}\nResearch: ${JSON.stringify(db.research.slice(0,6).map(r=>({title:r.title,notes:(r.notes||'').slice(0,160)})))}`}
+function runActions(list){
+  let bad=0;
+  for(const a of list){
+    const q=a.query||a.text||'';
+    if(a.type==='add_note'&&a.text)memory.add('notes',{text:a.text});
+    else if(a.type==='add_task'&&a.text)memory.add('tasks',{text:a.text,priority:a.priority||'medium',done:false});
+    else if(a.type==='add_research'&&(a.text||a.url))memory.add('research',{title:a.text||a.url,url:a.url||'',notes:a.notes||'',tags:a.tags||[]});
+    else if(['open_app','call','text_message','play_music','navigate'].includes(a.type)){
+      const r=a.type==='open_app'?doOpenApp(a.text||''):a.type==='call'?doCall(a.text||''):a.type==='text_message'?doText(a.text||'',a.notes||''):a.type==='play_music'?doPlayAny(a.text||'',a.query):doNavigate(a.text||'');
+      if(/^I (could not|do not)|works on an Android/.test(r))bad++}
+    else if(a.type==='open_page'&&['home','memory','tasks','research','voice','settings'].includes((a.text||'').toLowerCase()))go(a.text.toLowerCase());
+    else if(['complete_task','delete_task','set_priority'].includes(a.type)){const t=findBy(sortedTasks(),q);if(!t)bad++;else if(a.type==='complete_task')memory.edit('tasks',t.id,{done:true});else if(a.type==='delete_task')memory.remove('tasks',t.id);else memory.edit('tasks',t.id,{priority:a.priority||'medium'})}
+    else if(a.type==='delete_note'){const n=findBy(db.notes,q);if(!n)bad++;else memory.remove('notes',n.id)}
+  }
+  return bad}
+async function askBrain(input){
+  thinking=true;setState();$('#heard').textContent='Thinking…';
+  let out=null,err=null;
+  try{
+    const hist=db.conversations.filter(c=>c.heard&&c.reply).slice(0,6).reverse().flatMap(c=>[{role:'user',parts:[{text:c.heard}]},{role:'model',parts:[{text:c.reply}]}]);
+    const call=m=>fetch(GURL+'models/'+encodeURIComponent(m)+':generateContent',{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':brainKey()},body:JSON.stringify({
+      systemInstruction:{parts:[{text:SYS}]},
+      contents:[...hist,{role:'user',parts:[{text:input+'\n\n[Dashboard state]\n'+brainContext()}]}],
+      generationConfig:{responseMimeType:'application/json',responseSchema:SCHEMA,temperature:.6,maxOutputTokens:1024}})});
+    let r;for(const m of [db.settings.model||'gemini-flash-latest',...altModels()].slice(0,3)){r=await call(m);if(r.status!==429&&r.status!==404)break}
+    if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error((e.error&&e.error.message)||('HTTP '+r.status))}
+    const j=await r.json(),parts=j.candidates&&j.candidates[0]&&j.candidates[0].content&&j.candidates[0].content.parts;
+    out=JSON.parse((parts||[]).map(p=>p.text||'').join(''));
+  }catch(e){err=e}
+  thinking=false;setState();
+  if(err){$('#heard').textContent='Waiting for “'+(db.settings.wake||'jarvis')+'”…';reply(input,'I could not reach my brain just now.');const em=String(err.message||err);toast(/quota|exceeded|exhausted|429/i.test(em)?quotaMsg(em):em.slice(0,140));return}
+  const bad=runActions(out.actions||[]);
+  reply(input,(out.reply||'Done.')+(bad?' I could not find '+(bad>1?'some of those items.':'one of those items.'):''))}
+
+const RSYS="You are a research analyst writing for a busy, curious reader. Write a brief on the given topic. First line: a one-sentence overview in plain words. Then 4 to 6 lines, each starting with '- ', giving key facts, how it works, the current state, or notable names. Then one line starting 'Why it matters: '. Be accurate and concrete, under 200 words, and say so if something is uncertain or contested. No markdown except the leading hyphens. Finish with a last line 'TAGS: ' followed by 3 to 5 lowercase comma-separated tags.";
+async function gem(body){
+  let r;for(const m of [db.settings.model||'gemini-flash-latest',...altModels()].slice(0,3)){r=await fetch(GURL+'models/'+encodeURIComponent(m)+':generateContent',{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':brainKey()},body:JSON.stringify(body)});if(r.status!==429&&r.status!==404)break}
+  if(!r.ok){const e=await r.json().catch(()=>({}));const er=new Error((e.error&&e.error.message)||('HTTP '+r.status));er.status=r.status;throw er}
+  return r.json()}
+async function researchTopic(topic,id,heardTxt){
+  heardTxt=heardTxt||('research '+topic);
+  if(!brainReady()){toast('Add your Gemini key in Settings first.');return}
+  thinking=true;setState();$('#heard').textContent='Researching '+topic+'…';
+  const body={systemInstruction:{parts:[{text:RSYS}]},contents:[{role:'user',parts:[{text:'Research brief on: '+topic}]}],generationConfig:{temperature:.4,maxOutputTokens:1500}};
+  let j=null,err=null;
+  try{
+    if(db.settings.web!==false){try{j=await gem({...body,tools:[{google_search:{}}]})}catch(e){j=null}}
+    if(!j)j=await gem(body);
+  }catch(e){err=e}
+  thinking=false;setState();
+  if(err){$('#heard').textContent='Waiting for “'+(db.settings.wake||'jarvis')+'”…';const em=String(err.message||err);reply(heardTxt,'I could not complete that research.');toast(/quota|exceeded|exhausted|429/i.test(em)?quotaMsg(em):em.slice(0,140));return}
+  const cand=(j.candidates||[])[0]||{};let text=((cand.content&&cand.content.parts)||[]).map(p=>p.text||'').join('').trim();
+  const tm=text.match(/^TAGS:\s*(.+)$/im);const tags=tm?tagList(tm[1].toLowerCase()).slice(0,5):[];text=text.replace(/^TAGS:.*$/im,'').trim();
+  if(!text){reply(heardTxt,'I came back empty handed. Try rephrasing the topic.');return}
+  const seen=new Set(),sources=[];for(const c of (((cand.groundingMetadata||{}).groundingChunks)||[])){const w=c.web;if(w&&w.uri&&!seen.has(w.uri)&&sources.length<5){seen.add(w.uri);sources.push({title:(w.title||'').slice(0,80),uri:w.uri})}}
+  if(id){const old=db.research.find(x=>x.id===id)||{};memory.edit('research',id,{notes:old.notes?old.notes+'\n\n'+text:text,tags:[...new Set([...(old.tags||[]),...tags])],sources:[...(old.sources||[]),...sources].slice(0,8)})}
+  else memory.add('research',{title:topic,url:'',notes:text,tags,sources,ai:true});
+  go('research');
+  const first=text.split('\n')[0].replace(/^-\s*/,'').slice(0,260);
+  reply(heardTxt,first+' The full brief is saved in Research.')}
+
+$('#cmdGo').onclick=()=>{const v=$('#cmdIn').value.trim();if(v){$('#heard').textContent='“'+v+'”';run(v.replace(new RegExp('^'+(db.settings.wake||'jarvis')+'[\\s,]*','i'),''));$('#cmdIn').value=''}};
+$('#cmdIn').onkeydown=e=>{if(e.key==='Enter')$('#cmdGo').click()};
+
+/* ---------- settings ---------- */
+function applySettings(){$('#wake').value=db.settings.wake;$('#rate').value=db.settings.rate;$('#pitch').value=db.settings.pitch||.9;$('#gOn').checked=db.settings.brain!==false;$('#gWeb').checked=db.settings.web!==false;if(brainKey())$('#gkey').placeholder='Key saved on this phone';{const sel=$('#gmodel');if(db.settings.model&&![...sel.options].some(o=>o.value===db.settings.model))sel.append(h('option',{value:db.settings.model},db.settings.model));sel.value=db.settings.model||''}voices();$('#muteBtn').textContent=db.settings.muted?'Unmute voice':'Mute voice';setState()}
+$('#wake').onchange=e=>{db.settings.wake=(e.target.value.trim()||'jarvis').toLowerCase();memory.save()};
+$('#gSave').onclick=()=>{const k=$('#gkey').value.trim();if(!k){toast('Paste your key first.');return}localStorage.setItem('mj_gemini',k);$('#gkey').value='';$('#gkey').placeholder='Key saved on this phone';toast('Key saved on this phone.')};
+$('#gClear').onclick=()=>{localStorage.removeItem('mj_gemini');$('#gkey').placeholder='AIza…';toast('Key removed.')};
+$('#gWeb').onchange=e=>{db.settings.web=e.target.checked;memory.save()};
+$('#gOn').onchange=e=>{db.settings.brain=e.target.checked;memory.save()};
+$('#gmodel').onchange=e=>{db.settings.model=e.target.value;memory.save()};
+$('#gTest').onclick=()=>{if(!brainKey()){toast('Save your key first.');return}askBrain('Introduce yourself in one short sentence.')};
+$('#gModels').onclick=async()=>{
+  if(!brainKey()){toast('Save your key first.');return}
+  try{const r=await fetch(GURL+'models?pageSize=200',{headers:{'x-goog-api-key':brainKey()}});if(!r.ok)throw new Error((await r.json().catch(()=>({}))).error?.message||'HTTP '+r.status);
+    const L=((await r.json()).models||[]).filter(m=>(m.supportedGenerationMethods||[]).includes('generateContent')&&/flash/i.test(m.name)&&!/image|tts|live|audio|embed|robotics|computer/i.test(m.name)).map(m=>m.name.replace('models/','')).sort().reverse().sort((a,b)=>/preview|exp/i.test(a)-/preview|exp/i.test(b));localStorage.setItem('mj_models',JSON.stringify(L));
+    const sel=$('#gmodel');sel.replaceChildren(h('option',{value:''},'Auto (gemini-flash-latest)'),...L.map(n=>h('option',{value:n,selected:n===db.settings.model},n)));toast(L.length+' models found.')}
+  catch(e){toast(String(e.message||e).slice(0,140))}};
+$('#pitch').onchange=e=>{db.settings.pitch=+e.target.value;memory.save()};
+$('#testVoice').onclick=()=>{db.settings.muted=false;saveLocal();speak('Good evening. All systems are online.')};
+$('#jvPreset').onclick=()=>{const v=britishVoice();if(v)db.settings.voice=v.name;db.settings.pitch=.85;db.settings.rate=.95;db.settings.muted=false;memory.save();applySettings();speak('Good evening. All systems are online.');if(!v)toast('No British voice found on this device. Pick one from the list.')};
+$('#rate').onchange=e=>{db.settings.rate=+e.target.value;memory.save()};
+$('#voiceSel').onchange=e=>{db.settings.voice=e.target.value;memory.save();speak('Voice updated.')};
+$('#cid').value=localStorage.getItem('mj_cid')||'';
+$('#exportBtn').onclick=()=>{
+  const a=document.createElement('a'),u=URL.createObjectURL(new Blob([JSON.stringify(db,null,2)],{type:'application/json'}));
+  a.href=u;a.download='jarvis-backup-'+new Date().toISOString().slice(0,10)+'.json';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),2000)};
+$('#importBtn').onclick=()=>$('#importFile').click();
+$('#importFile').onchange=async e=>{
+  const f=e.target.files[0];e.target.value='';if(!f)return;
+  let d=null;try{d=JSON.parse(await f.text())}catch(err){}
+  if(!validDb(d)){toast('That file is not a Jarvis backup.');return}
+  const n=normDb(d);
+  if(!confirm(`Replace everything on this device${signedIn?' and in Drive':''} with ${n.notes.length} notes, ${n.tasks.length} tasks and ${n.research.length} research entries from this file?`))return;
+  db=n;memory.save();renderAll();applySettings();toast('Backup imported.')};
+$('#signIn').onclick=signIn;$('#signOut').onclick=()=>signOut();$('#bannerBtn').onclick=signIn;
+
+/* ---------- living hologram ---------- */
+(()=>{
+  const cvs=$$('.holo-cv');if(!cvs.length)return;
+  const N=900,P=[],XY=new Float32Array(N*3);for(let i=0;i<N;i++){const y=1-2*(i+.5)/N,r=Math.sqrt(1-y*y),a=i*2.399963;P.push([Math.cos(a)*r,y,Math.sin(a)*r,Math.random()*6.28])}
+  const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const COL={idle:[94,200,255],listening:[150,240,255],speaking:[190,225,255],muted:[105,115,130],thinking:[175,150,255]},ORANGE=[255,120,70];
+  let C=[...COL.idle],E=.25,ang=0,last=0;
+  const rgba=(c,a)=>`rgba(${c[0]|0},${c[1]|0},${c[2]|0},${Math.max(0,Math.min(1,a))})`;
+  function arcs(g,cx,r,start,n,span,lw,col,a){g.lineWidth=lw;g.strokeStyle=rgba(col,a);for(let i=0;i<n;i++){const a0=start+i*6.2832/n;g.beginPath();g.arc(cx,cx,r,a0,a0+span);g.stroke()}}
+  function draw(c,t,st){
+    if(!c.offsetParent)return;
+    const d=Math.min(devicePixelRatio||1,2),w=Math.round(c.getBoundingClientRect().width*d);if(!w)return;if(c.width!==w){c.width=w;c.height=w}
+    const g=c.getContext('2d'),W=w,cx=W/2,R=W/2*.94,u=W/340;
+    g.clearRect(0,0,W,W);
+    const pulse=1+E*.03*Math.sin(t*(st==='speaking'?13:3.2));
+    g.save();g.translate(cx,cx);g.scale(pulse,pulse);g.translate(-cx,-cx);
+    // glow
+    const gr=g.createRadialGradient(cx,cx,0,cx,cx,R);gr.addColorStop(0,rgba(C,.20+E*.25));gr.addColorStop(.6,rgba(C,.05));gr.addColorStop(1,rgba(C,0));
+    g.fillStyle=gr;g.fillRect(0,0,W,W);
+    // sphere of points
+    const ca=Math.cos(ang),sa=Math.sin(ang),tilt=.38,ct=Math.cos(tilt),stl=Math.sin(tilt),Rs=R*.74;
+    for(let i=0;i<N;i++){const p=P[i];
+      const x=p[0]*ca+p[2]*sa,z=-p[0]*sa+p[2]*ca,y=p[1]*ct-z*stl,z2=p[1]*stl+z*ct,dep=(z2+1)/2;
+      XY[i*3]=cx+x*Rs;XY[i*3+1]=cx+y*Rs;XY[i*3+2]=dep;
+      const tw=.7+.3*Math.sin(t*2+p[3]),al=(.18+.82*dep)*tw,sz=(.9+2*dep)*d;
+      g.fillStyle=rgba(C,al);g.fillRect(XY[i*3]-sz/2,XY[i*3+1]-sz/2,sz,sz);
+    }
+    g.strokeStyle=rgba(C,.2+E*.15);g.lineWidth=.7*d;g.beginPath();const lim=Rs*.2;
+    for(let i=0;i<N-55;i+=2)for(const o of [34,55]){const j=i+o;if(XY[i*3+2]>.45&&XY[j*3+2]>.45){const dx=XY[i*3]-XY[j*3],dy=XY[i*3+1]-XY[j*3+1];if(dx*dx+dy*dy<lim*lim){g.moveTo(XY[i*3],XY[i*3+1]);g.lineTo(XY[j*3],XY[j*3+1])}}}
+    g.stroke();
+    // rings
+    g.lineCap='butt';
+    g.lineWidth=1*d;g.strokeStyle=rgba(C,.28);g.beginPath();g.arc(cx,cx,R,0,6.2832);g.stroke();
+    for(let i=0;i<72;i++){const a=i*.0873+ang*.3,l=i%6?3:8;g.strokeStyle=rgba(C,i%6?.25:.5);g.lineWidth=1*d;g.beginPath();g.moveTo(cx+Math.cos(a)*R,cx+Math.sin(a)*R);g.lineTo(cx+Math.cos(a)*(R-l*u*d),cx+Math.sin(a)*(R-l*u*d));g.stroke()}
+    arcs(g,cx,R*.92,ang*1.1,3,1.25,3*d*u,C,.8);
+    g.setLineDash([3*d*u,9*d*u]);g.lineDashOffset=-t*18*d;arcs(g,cx,R*.85,0,1,6.2832,1.5*d*u,C,.6);g.setLineDash([]);
+    arcs(g,cx,R*.66,-ang*1.7,2,2.1,3.5*d*u,C,.85);
+    g.setLineDash([2*d*u,5*d*u]);g.lineDashOffset=t*10*d;arcs(g,cx,R*.48,0,1,6.2832,1*d*u,C,.45);g.setLineDash([]);
+    // pulse waves
+    const rate=st==='thinking'?.8:st==='speaking'?.9:st==='listening'?.55:.2,wc=st==='speaking'?ORANGE:C;
+    for(let k=0;k<3;k++){const ph=(t*rate+k/3)%1;g.lineWidth=(1+2*(1-ph))*d;g.strokeStyle=rgba(wc,(1-ph)*(.12+E*.5));g.beginPath();g.arc(cx,cx,R*(.3+.7*ph),0,6.2832);g.stroke()}
+    // title
+    g.textAlign='center';g.textBaseline='middle';g.font=`700 ${Math.round(W*.072)}px Orbitron,'Segoe UI',sans-serif`;if('letterSpacing' in g)g.letterSpacing=Math.round(W*.01)+'px';
+    g.shadowColor=rgba(C,.9);g.shadowBlur=(10+E*18)*d;g.fillStyle=`rgba(255,255,255,${.82+E*.18})`;g.fillText('J.A.R.V.I.S',cx,cx);g.shadowBlur=0;
+    g.strokeStyle=rgba(C,.5);g.lineWidth=1*d;g.beginPath();g.moveTo(cx-R*.62,cx);g.lineTo(cx-R*.5,cx);g.moveTo(cx+R*.5,cx);g.lineTo(cx+R*.62,cx);g.stroke();
+    g.restore();
+  }
+  function frame(now){
+    const t=now/1000,dt=Math.min(.05,t-last||.016);last=t;
+    const st=document.body.dataset.state||'idle';
+    const tE=st==='speaking'?.55+.45*Math.abs(Math.sin(t*7)*Math.sin(t*3.1+1)):st==='thinking'?.8:st==='listening'?.65:st==='muted'?.08:.25;
+    E+=(tE-E)*Math.min(1,dt*8);
+    const tc=COL[st]||COL.idle;for(let i=0;i<3;i++)C[i]+=(tc[i]-C[i])*Math.min(1,dt*4);
+    ang+=dt*(st==='thinking'?1.1:st==='speaking'?.8:st==='listening'?.55:st==='muted'?.08:.22);
+    cvs.forEach(c=>draw(c,t,st));requestAnimationFrame(frame)}
+  if(reduce)cvs.forEach(c=>draw(c,2,'idle'));else requestAnimationFrame(frame);
+})();
+
+/* ---------- standby + always-on ---------- */
+async function keepAwake(on,force){try{
+  if(on&&(force||localStorage.getItem('mj_awake')!=='0')&&'wakeLock' in navigator){if(!wl){wl=await navigator.wakeLock.request('screen');wl.addEventListener('release',()=>{wl=null})}}
+  else if(!on&&wl){await wl.release();wl=null}}catch{}}
+const sb=$('#standby'),clockTxt=()=>new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+function openStandby(){if(!listening)$('#listenBtn').click();sbOpen=true;sb.hidden=false;$('#sbClock').textContent=clockTxt();$('#sbText').textContent=$('#heard').textContent;keepAwake(true,true);if(document.documentElement.requestFullscreen)document.documentElement.requestFullscreen().catch(()=>{})}
+function closeStandby(){sbOpen=false;sb.hidden=true;if(document.fullscreenElement)document.exitFullscreen().catch(()=>{});keepAwake(listening)}
+sb.addEventListener('click',closeStandby);$('#sbBtn').onclick=openStandby;
+new MutationObserver(()=>{$('#sbText').textContent=$('#heard').textContent}).observe($('#heard'),{childList:true,characterData:true,subtree:true});
+setInterval(()=>{if(sbOpen)$('#sbClock').textContent=clockTxt()},5000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&(listening||sbOpen)){keepAwake(true,sbOpen);if(!rec)startRec()}});
+setInterval(()=>{if(listening&&!rec&&!document.hidden)startRec()},4000);
+$('#aAuto').checked=localStorage.getItem('mj_auto')==='1';$('#aAwake').checked=localStorage.getItem('mj_awake')!=='0';
+$('#aAuto').onchange=e=>localStorage.setItem('mj_auto',e.target.checked?'1':'0');
+$('#aAwake').onchange=e=>{localStorage.setItem('mj_awake',e.target.checked?'1':'0');keepAwake(listening&&e.target.checked||sbOpen,sbOpen)};
+if(localStorage.getItem('mj_auto')==='1'&&SR){listening=true;syncMic();$('#heard').textContent='Listening for “'+(db.settings.wake||'jarvis')+'”…';startRec();
+  const kick=()=>{if(!rec)startRec();document.removeEventListener('pointerdown',kick)};document.addEventListener('pointerdown',kick)}
+
+/* ---------- install (PWA) ---------- */
+let installEv=null;
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installEv=e;$('#installBtn').hidden=false});
+window.addEventListener('appinstalled',()=>{installEv=null;$('#installBtn').hidden=true;toast('Installed. Open Jarvis from your home screen.')});
+$('#installBtn').onclick=async()=>{if(!installEv)return;installEv.prompt();await installEv.userChoice;installEv=null;$('#installBtn').hidden=true};
+if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol))navigator.serviceWorker.register('sw.js').catch(()=>{});
+
+/* ---------- boot ---------- */
+const gs=document.createElement('script');gs.src='https://accounts.google.com/gsi/client';gs.async=true;gs.onload=initAuth;document.head.append(gs);
+renderAll();applySettings();
+</script>
+</body>
+</html>
