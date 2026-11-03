@@ -774,7 +774,7 @@ $('#gClear').onclick=()=>{localStorage.removeItem('mj_gemini');$('#gkey').placeh
 $('#gWeb').onchange=e=>{db.settings.web=e.target.checked;memory.save()};
 
 /* ---------- Fish Audio TTS ---------- */
-const FISH_TTS_URL = 'https://api.fish.audio/v1/tts';
+const FISH_TTS_URL = 'https://mars-jarvis-proxy.sheesosecret.workers.dev/';
 const FISH_MODEL   = 's2.1-pro-free';   
 const FISH_VOICE   = localStorage.getItem('mj_fish_voice') || '88b183bfbdda44a09ad4474712b967f4';
 const FISH_KEY     = () => localStorage.getItem('mj_fish_key') || '';
