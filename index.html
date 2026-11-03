@@ -606,7 +606,7 @@ async function spError(r){const j=await r.json().catch(()=>({})),e=new Error((j.
 function spErr(e){
   const m=String(e&&e.message||e);
   if(e&&(e.reason==='NO_ACTIVE_DEVICE'||e.status===404))return 'Spotify is not active on your phone. Open the Spotify app, then ask me again.';
-  if(e&&e.reason==='PREMIUM_REQUIRED')return 'Spotify says that needs Premium.';
+  if(e&&e.reason==='NOT_STARTED')return 'Spotify accepted the command but no audio started. Open the Spotify app, press play once, then ask me again.';
   if(/not connected|expired/i.test(m)||(e&&e.status===401))return 'Spotify needs reconnecting. Open Settings and tap Connect Spotify.';
   if(e&&e.status===429)return 'Spotify is busy. Try again in a moment.';
   return 'Spotify said: '+m.slice(0,100)}
@@ -634,9 +634,20 @@ async function spDevice(){
   const last=localStorage.getItem('mj_sp_dev');
   return L.find(d=>d.is_active)||L.find(d=>d.id===last)||L.find(d=>/smartphone/i.test(d.type))||L[0]}
 async function spStart(dev,pick){
-  if(!dev.is_active){await spFetch('/me/player',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({device_ids:[dev.id],play:false})});await new Promise(r=>setTimeout(r,500))}
+  // Always transfer playback to this device and start it, even if it looks active.
+  await spFetch('/me/player',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({device_ids:[dev.id],play:true})});
+  await new Promise(r=>setTimeout(r,600));
   const r=await spFetch('/me/player/play?device_id='+enc(dev.id),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(pick.uris?{uris:pick.uris}:{context_uri:pick.context})});
-  if(!r.ok)throw await spError(r);localStorage.setItem('mj_sp_dev',dev.id)}
+  if(!r.ok)throw await spError(r);
+  localStorage.setItem('mj_sp_dev',dev.id);
+  // Verify playback actually started. Without this, Spotify can return 204 and stay silent.
+  await new Promise(r=>setTimeout(r,800));
+  const chk=await spFetch('/me/player');
+  if(!chk.ok)return;
+  const s=await chk.json().catch(()=>({}));
+  if(s.is_playing)return;
+  throw Object.assign(new Error('Spotify accepted the command but no audio started.'),{reason:'NOT_STARTED'});
+}
 async function spPlay(query,heardTxt,quiet,tries){
   heardTxt=heardTxt||('play '+query);thinking=true;setState();$('#heard').textContent='Finding '+query+'…';
   let msg,ok=false;
