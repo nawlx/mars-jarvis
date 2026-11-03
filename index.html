@@ -844,10 +844,10 @@ function speak(t){
   if('speechSynthesis' in window) speechSynthesis.cancel();
   if(FISH_KEY()){
     speakWithFish(t).catch(err => {
-      console.warn('Fish Audio failed, falling back to system voice:', err);
-      toast('Fish Audio unavailable — using system voice.');
-      speakWithSystem(t);
-    });
+  console.warn('Fish Audio failed:', err);
+  toast('Fish Error: ' + (err.message || 'Unknown'));
+  speakWithSystem(t);
+});
     return;
   }
   speakWithSystem(t);
