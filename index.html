@@ -223,8 +223,20 @@ nav button{flex:1;min-width:0;flex-direction:column;justify-content:center;gap:2
     <label style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="gOn" style="width:auto"> Use the brain for commands I do not recognise</label>
     <label style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="gWeb" style="width:auto"> Let Jarvis search the web when researching</label>
   </div>
-  <div class="glass card" style="margin-top:14px">
-    <h2>Spotify</h2>
+ <div class="glass card" style="margin-top:14px">
+  <h2>Voice (Fish Audio)</h2>
+  <p class="muted">Optional. Paste your Fish Audio API key to use your cloned voice. Without it, Jarvis uses your phone's built‑in voice. Get a key at fish.audio → Dashboard → API Keys.</p>
+  <label for="fishKey">Fish Audio API key</label>
+  <input id="fishKey" type="password" autocomplete="off" placeholder="Paste key">
+  <div class="row" style="margin:12px 0 8px">
+    <button class="btn" id="fishSave">Save key</button>
+    <button class="btn ghost" id="fishTest">Test voice</button>
+    <button class="btn ghost" id="fishClear">Remove key</button>
+  </div>
+  <div class="muted" id="fishStatus">Not set. Jarvis will use your phone's voice.</div>
+ </div>
+    <div class="glass card" style="margin-top:14px">
+  <h2>Spotify</h2>
     <p class="muted">Lets Jarvis start music directly in your Spotify app. Needs Spotify Premium. Create a free app at developer.spotify.com/dashboard, choose Web API, and add this exact redirect URI:</p>
     <p><code id="spRedirect"></code></p>
     <label for="spId">Client ID</label><input id="spId" placeholder="Paste the client ID from your Spotify app" autocomplete="off">
@@ -442,11 +454,6 @@ let speaking=false,speakEnd=0,sbOpen=false,wl=null;
 function britishVoice(){if(!('speechSynthesis' in window))return;const L=speechSynthesis.getVoices().filter(v=>/^en[-_]GB/i.test(v.lang));return L.find(v=>/male|daniel|george|ryan|arthur|gbb|gbd|rjs/i.test(v.name)&&!/female/i.test(v.name))||L[0]}
 function voices(){if(!('speechSynthesis' in window))return;const s=$('#voiceSel');s.replaceChildren(h('option',{value:''},'System default'));speechSynthesis.getVoices().forEach(v=>s.append(h('option',{value:v.name,selected:v.name===db.settings.voice},`${v.name} (${v.lang})`)))}
 if('speechSynthesis' in window){speechSynthesis.onvoiceschanged=voices;voices()}
-function speak(t){
-  if(!('speechSynthesis' in window)||db.settings.muted)return;
-  speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);
-  let v=speechSynthesis.getVoices().find(v=>v.name===db.settings.voice);if(!v&&!db.settings.voice)v=britishVoice();if(v){u.voice=v;u.lang=v.lang}u.rate=+db.settings.rate||1;u.pitch=+db.settings.pitch||1;
-  u.onstart=()=>{speaking=true;setState()};u.onend=u.onerror=()=>{speaking=false;speakEnd=Date.now();setState()};speechSynthesis.speak(u)}
 let thinking=false;
 function setState(){document.body.dataset.state=thinking?'thinking':db.settings.muted&&!listening?'muted':speaking?'speaking':listening?'listening':'idle';
   $('#stateLabel').textContent={idle:'Idle',listening:'Listening',speaking:'Speaking',muted:'Muted',thinking:'Thinking'}[document.body.dataset.state]}
@@ -764,31 +771,115 @@ function applySettings(){$('#wake').value=db.settings.wake;$('#rate').value=db.s
 $('#wake').onchange=e=>{db.settings.wake=(e.target.value.trim()||'jarvis').toLowerCase();memory.save()};
 $('#gSave').onclick=()=>{const k=$('#gkey').value.trim();if(!k){toast('Paste your key first.');return}localStorage.setItem('mj_gemini',k);$('#gkey').value='';$('#gkey').placeholder='Key saved on this phone';toast('Key saved on this phone.')};
 $('#gClear').onclick=()=>{localStorage.removeItem('mj_gemini');$('#gkey').placeholder='AIza…';toast('Key removed.')};
-$('#gWeb').onchange=e=>{db.settings.web=e.target.checked;memory.save()};/* ---------- Fish Audio key ---------- */
+$('#gWeb').onchange=e=>{db.settings.web=e.target.checked;memory.save()};
+
+/* ---------- Fish Audio TTS ---------- */
+const FISH_TTS_URL = 'https://api.fish.audio/v1/tts';
+const FISH_MODEL   = 's2.1-pro-free';   
+const FISH_VOICE   = localStorage.getItem('mj_fish_voice') || '88b183bfbdda44a09ad4474712b967f4';
+const FISH_KEY     = () => localStorage.getItem('mj_fish_key') || '';
+
+let fishAudio = null;
+
+function stopFishAudio(){
+  if(fishAudio){ try{ fishAudio.pause(); }catch(e){} fishAudio = null; }
+}
+
+async function speakWithFish(text){
+  const key = FISH_KEY();
+  if(!key) throw new Error('NO_FISH_KEY');
+
+  stopFishAudio();
+  speaking = true; setState();
+
+  const res = await fetch(FISH_TTS_URL, {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer ' + key,
+      'Content-Type':  'application/json',
+      'model':         FISH_MODEL
+    },
+    body: JSON.stringify({
+      text:         text,
+      reference_id: FISH_VOICE,
+      format:       'mp3'
+    })
+  });
+
+  if(!res.ok){
+    const detail = await res.text().catch(() => '');
+    throw new Error('FISH_HTTP_' + res.status + (detail ? ': ' + detail.slice(0,120) : ''));
+  }
+
+  const blob = await res.blob();
+  const url  = URL.createObjectURL(blob);
+
+  await new Promise((resolve, reject) => {
+    fishAudio = new Audio(url);
+    fishAudio.onended = () => { speaking = false; speakEnd = Date.now(); setState(); URL.revokeObjectURL(url); resolve(); };
+    fishAudio.onerror = () => { speaking = false; speakEnd = Date.now(); setState(); URL.revokeObjectURL(url); reject(new Error('AUDIO_PLAYBACK_FAILED')); };
+    fishAudio.play().catch(err => {
+      speaking = false; setState(); URL.revokeObjectURL(url);
+      reject(err);
+    });
+  });
+}
+
+function speakWithSystem(text){
+  if(!('speechSynthesis' in window)) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  let v = speechSynthesis.getVoices().find(v => v.name === db.settings.voice);
+  if(!v && !db.settings.voice) v = britishVoice();
+  if(v){ u.voice = v; u.lang = v.lang; }
+  u.rate  = +db.settings.rate  || 1;
+  u.pitch = +db.settings.pitch || 1;
+  u.onstart = () => { speaking = true;  setState(); };
+  u.onend = u.onerror = () => { speaking = false; speakEnd = Date.now(); setState(); };
+  speechSynthesis.speak(u);
+}
+
+function speak(t){
+  if(db.settings.muted) return;
+  if('speechSynthesis' in window) speechSynthesis.cancel();
+  if(FISH_KEY()){
+    speakWithFish(t).catch(err => {
+      console.warn('Fish Audio failed, falling back to system voice:', err);
+      toast('Fish Audio unavailable — using system voice.');
+      speakWithSystem(t);
+    });
+    return;
+  }
+  speakWithSystem(t);
+}
+
+/* ---------- Fish Audio Settings UI ---------- */
 function fishStatusUpdate(){
   const el=$('#fishStatus');
   if(el) el.textContent = FISH_KEY() ? 'Key saved. Using your Fish Audio voice.' : "Not set. Jarvis will use your phone's voice.";
 }
-$('#fishKey').value='';
-fishStatusUpdate();
-$('#fishSave').onclick=()=>{
-  const k=$('#fishKey').value.trim();
-  if(!k){toast('Paste your key first.');return}
-  localStorage.setItem('mj_fish_key',k);
+if ($('#fishKey')) {
   $('#fishKey').value='';
   fishStatusUpdate();
-  toast('Fish Audio key saved.');
-};
-$('#fishClear').onclick=()=>{
-  localStorage.removeItem('mj_fish_key');
-  fishStatusUpdate();
-  toast('Fish Audio key removed.');
-};
-$('#fishTest').onclick=()=>{
-  if(!FISH_KEY()){toast('Save your key first.');return}
-  db.settings.muted=false;
-  speak('Good evening. Fish Audio is online.');
-};
+  $('#fishSave').onclick=()=>{
+    const k=$('#fishKey').value.trim();
+    if(!k){toast('Paste your key first.');return}
+    localStorage.setItem('mj_fish_key',k);
+    $('#fishKey').value='';
+    fishStatusUpdate();
+    toast('Fish Audio key saved.');
+  };
+  $('#fishClear').onclick=()=>{
+    localStorage.removeItem('mj_fish_key');
+    fishStatusUpdate();
+    toast('Fish Audio key removed.');
+  };
+  $('#fishTest').onclick=()=>{
+    if(!FISH_KEY()){toast('Save your key first.');return}
+    db.settings.muted=false;
+    speak('Good evening. Fish Audio is online.');
+  };
+}
 $('#gOn').onchange=e=>{db.settings.brain=e.target.checked;memory.save()};
 $('#gmodel').onchange=e=>{db.settings.model=e.target.value;memory.save()};
 $('#gTest').onclick=()=>{if(!brainKey()){toast('Save your key first.');return}askBrain('Introduce yourself in one short sentence.')};
@@ -803,18 +894,7 @@ $('#testVoice').onclick=()=>{db.settings.muted=false;saveLocal();speak('Good eve
 $('#jvPreset').onclick=()=>{const v=britishVoice();if(v)db.settings.voice=v.name;db.settings.pitch=.85;db.settings.rate=.95;db.settings.muted=false;memory.save();applySettings();speak('Good evening. All systems are online.');if(!v)toast('No British voice found on this device. Pick one from the list.')};
 $('#rate').onchange=e=>{db.settings.rate=+e.target.value;memory.save()};
 $('#voiceSel').onchange=e=>{db.settings.voice=e.target.value;memory.save();speak('Voice updated.')};
-$('#cid').value=localStorage.getItem('mj_cid')||'';<div class="glass card" style="margin-top:14px">
-  <h2>Voice (Fish Audio)</h2>
-  <p class="muted">Optional. Paste your Fish Audio API key to use your cloned voice. Without it, Jarvis uses your phone's built‑in voice. Get a key at fish.audio → Dashboard → API Keys.</p>
-  <label for="fishKey">Fish Audio API key</label>
-  <input id="fishKey" type="password" autocomplete="off" placeholder="Paste key">
-  <div class="row" style="margin:12px 0 8px">
-    <button class="btn" id="fishSave">Save key</button>
-    <button class="btn ghost" id="fishTest">Test voice</button>
-    <button class="btn ghost" id="fishClear">Remove key</button>
-  </div>
-  <div class="muted" id="fishStatus">Not set. Jarvis will use your phone's voice.</div>
-</div>
+$('#cid').value=localStorage.getItem('mj_cid')||'';
 $('#exportBtn').onclick=()=>{
   const a=document.createElement('a'),u=URL.createObjectURL(new Blob([JSON.stringify(db,null,2)],{type:'application/json'}));
   a.href=u;a.download='jarvis-backup-'+new Date().toISOString().slice(0,10)+'.json';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),2000)};
