@@ -91,6 +91,7 @@ body[data-state=muted] .reactor .core{fill:#4b5563;filter:none}
 #launch[hidden]{display:none}
 #launchTxt{flex:1;overflow-wrap:anywhere}
 #launchGo{text-decoration:none;color:inherit}
+code{background:rgba(255,255,255,.08);padding:2px 6px;border-radius:6px;overflow-wrap:anywhere;font-size:15px}
 #sbClock{font:700 44px var(--disp);color:rgba(232,238,245,.85)}
 #sbText{color:var(--ice);min-height:28px;font-size:19px;max-width:90vw}
 #sbHint{color:var(--muted);font-size:14px}
@@ -200,7 +201,7 @@ nav button{flex:1;min-width:0;flex-direction:column;justify-content:center;gap:2
   <div class="row" style="margin-top:14px"><input id="cmdIn" placeholder="Or type a command, e.g. add task call mom" aria-label="Type a command"><button class="btn" id="cmdGo">Run</button></div>
   <div class="glass card"><h2>Command history</h2><div class="hist" id="voiceHist"></div></div>
   <div class="glass card" style="margin-top:14px"><h2>Commands</h2>
-    <div class="muted">add note … · show notes · search notes … · delete last note · delete note 2<br>add task … (add “high priority” at the end) · complete task 1 · delete task … · set priority of task 2 to high · show tasks<br>open spotify · call mom · text mom saying … · play … on spotify · navigate to … · research quantum computing (Jarvis writes a brief) · deep dive on … · add research … (plain save) · show research · search research … · delete research 1<br>go to home / memory / tasks / research / settings · mute · unmute</div></div>
+    <div class="muted">add note … · show notes · search notes … · delete last note · delete note 2<br>add task … (add “high priority” at the end) · complete task 1 · delete task … · set priority of task 2 to high · show tasks<br>open spotify · call mom · text mom saying … · play … (plays on Spotify) · pause · skip · what's playing · navigate to … · research quantum computing (Jarvis writes a brief) · deep dive on … · add research … (plain save) · show research · search research … · delete research 1<br>go to home / memory / tasks / research / settings · mute · unmute</div></div>
 </section>
 
 <section id="settings">
@@ -221,6 +222,14 @@ nav button{flex:1;min-width:0;flex-direction:column;justify-content:center;gap:2
     <div class="row" style="margin:14px 0 8px"><button class="btn" id="gSave">Save key</button><button class="btn ghost" id="gModels">Load models</button><button class="btn ghost" id="gTest">Test</button><button class="btn ghost" id="gClear">Remove key</button></div>
     <label style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="gOn" style="width:auto"> Use the brain for commands I do not recognise</label>
     <label style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="gWeb" style="width:auto"> Let Jarvis search the web when researching</label>
+  </div>
+  <div class="glass card" style="margin-top:14px">
+    <h2>Spotify</h2>
+    <p class="muted">Lets Jarvis start music directly in your Spotify app. Needs Spotify Premium. Create a free app at developer.spotify.com/dashboard, choose Web API, and add this exact redirect URI:</p>
+    <p><code id="spRedirect"></code></p>
+    <label for="spId">Client ID</label><input id="spId" placeholder="Paste the client ID from your Spotify app" autocomplete="off">
+    <div class="row" style="margin:12px 0 8px"><button class="btn" id="spConnect">Connect Spotify</button><button class="btn ghost" id="spTest">Check devices</button><button class="btn ghost" id="spCopy">Copy URI</button><button class="btn ghost" id="spDisc">Disconnect</button></div>
+    <div class="muted" id="spStatus">Not connected.</div>
   </div>
   <div class="glass card" style="margin-top:14px">
     <h2>Phone actions</h2>
@@ -251,7 +260,7 @@ nav button{flex:1;min-width:0;flex-direction:column;justify-content:center;gap:2
     <label for="pitch">Pitch</label><input id="pitch" type="range" min=".5" max="1.5" step=".05">
     <div class="row" style="margin:14px 0 0"><button class="btn" id="jvPreset">Jarvis voice preset</button><button class="btn ghost" id="testVoice">Test voice</button></div>
   </div>
-<p class="muted" style="margin:14px 4px">Mars Jarvis v1.7 · phase two</p>
+<p class="muted" style="margin:14px 4px">Mars Jarvis v1.8 · phase two</p>
 </section>
 </main>
 </div>
@@ -511,7 +520,13 @@ function run(input){
   if(m=c.match(/^(?:go\s+to|open|show)\s+(home|memory|notes|tasks|research|voice|settings)$/i)){go(m[1]==='notes'?'memory':m[1].toLowerCase());return say('Opening '+m[1]+'.')}
   if(m=c.match(/^(?:call|phone|dial|ring)\s+(.+)/i))return say(doCall(m[1]));
   if(m=c.match(/^(?:text|message|sms)\s+(.+?)\s+(?:saying|that says|that|say|:)\s+(.+)/i))return say(doText(m[1],m[2]));
-  if(m=c.match(/^play\s+(.+?)(?:\s+on\s+(spotify|youtube music|youtube))?$/i))return say(doPlay(m[1],m[2]));
+  if(/^(?:pause|stop\s+(?:the\s+)?(?:music|song|spotify|playback))(?:\s+(?:the\s+)?(?:music|song|spotify|playback))?$/i.test(c))return spReady()?spControl('pause',input):say('Connect Spotify in Settings first.');
+  if(/^(?:(?:resume|continue|unpause)(?:\s+(?:the\s+)?(?:music|song|spotify|playback))?|play|play\s+(?:music|spotify))$/i.test(c))return spReady()?spControl('resume',input):say('Connect Spotify in Settings first.');
+  if(/^(?:skip|next)(?:\s+(?:the\s+)?(?:song|track|music))?$/i.test(c))return spReady()?spControl('next',input):say('Connect Spotify in Settings first.');
+  if(/^(?:previous|go\s+back)(?:\s+(?:the\s+)?(?:song|track))?$/i.test(c))return spReady()?spControl('prev',input):say('Connect Spotify in Settings first.');
+  if(m=c.match(/^(?:turn\s+)?shuffle\s+(on|off)$/i))return spReady()?spControl('shuffle_'+m[1].toLowerCase(),input):say('Connect Spotify in Settings first.');
+  if(/^what(?:'s|\s+is)\s+(?:this\s+song|playing|this)$|^what\s+song\s+is\s+(?:this|playing)$/i.test(c))return spReady()?spControl('now',input):say('Connect Spotify in Settings first.');
+  if(m=c.match(/^play\s+(.+?)(?:\s+on\s+(spotify|youtube music|youtube))?$/i)){const svc=(m[2]||'').toLowerCase();if((!svc||svc==='spotify')&&spReady())return spPlay(m[1],input);return say(doPlay(m[1],m[2]))}
   if(m=c.match(/^(?:navigate|directions|take me|drive)\s+(?:to\s+)?(.+)/i))return say(doNavigate(m[1]));
   if(m=c.match(/^(?:open|launch|start)\s+(.+)/i))return say(doOpenApp(m[1]));
   if(/^(?:standby|stand by|go to standby|standby mode|sleep mode)$/i.test(c)){reply(input,'Standing by.');return openStandby()}
@@ -530,7 +545,7 @@ function findApp(name){const n=name.toLowerCase().replace(/^(the|my)\s+/,'').rep
 const appIntent=pkg=>`intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=${pkg};S.browser_fallback_url=${enc('https://play.google.com/store/apps/details?id='+pkg)};end`;
 const webIntent=(https,pkg)=>isAndroid?`intent://${https.replace(/^https:\/\//,'')}#Intent;scheme=https;package=${pkg};S.browser_fallback_url=${enc(https)};end`:https;
 function launch(url,label,force,btn){
-  if(!force&&navigator.userActivation&&navigator.userActivation.isActive){location.href=url;return false}
+  if(!force&&navigator.userActivation&&navigator.userActivation.isActive){$('#launch').hidden=true;location.href=url;return false}
   $('#launchTxt').textContent=label;$('#launchGo').href=url;$('#launchGo').textContent=btn||'Open';$('#launch').hidden=false;
   clearTimeout(launch.t);launch.t=setTimeout(()=>$('#launch').hidden=true,30000);return true}
 $('#launchX').onclick=()=>$('#launch').hidden=true;$('#launchGo').addEventListener('click',()=>setTimeout(()=>$('#launch').hidden=true,400));
@@ -539,7 +554,7 @@ function doOpenApp(name){
   if(!isAndroid)return 'Opening apps works on an Android phone.';
   if(/^camera$/i.test(name.trim())){const t=launch('intent:#Intent;action=android.media.action.IMAGE_CAPTURE;end','Open Camera');return 'Opening the camera.'+tapNote(t)}
   if(/^phone settings$|^android settings$/i.test(name.trim())){const t=launch('intent:#Intent;action=android.settings.SETTINGS;end','Open phone settings');return 'Opening phone settings.'+tapNote(t)}
-  const a=findApp(name);if(!a)return `I do not know an app called ${name}. You can add it in Settings.`;
+  const a=findApp(name);if(!a)return `I do not know an app called ${name.replace(/^(the|my)\s+/i,'').replace(/\s+app$/i,'')}. Add it under My app shortcuts in Settings.`;
   const t=launch(appIntent(a[1]),'Open '+cap(a[0]));return `Opening ${cap(a[0])}.`+tapNote(t)}
 const findContact=q=>{const n=q.toLowerCase().replace(/^(my|the)\s+/,'').trim();return db.contacts.find(c=>c.name.toLowerCase()===n)||db.contacts.find(c=>c.name.toLowerCase().startsWith(n))||db.contacts.find(c=>c.name.toLowerCase().includes(n))};
 function target(q){const digits=q.replace(/[\s\-().]/g,'');if(/^\+?\d{3,}$/.test(digits))return{name:digits,tel:digits};const c=findContact(q);return c?{name:c.name,tel:c.tel.replace(/[^\d+]/g,'')}:null}
@@ -563,6 +578,101 @@ $('#ctImport').onclick=async()=>{
     memory.save();renderAll();toast(n+' contact'+(n===1?'':'s')+' imported.')}catch(e){if(e&&e.name!=='AbortError')toast('Could not import contacts.')}};
 $('#appMap').value=localStorage.getItem('mj_apps')||'';$('#appMap').onchange=e=>localStorage.setItem('mj_apps',e.target.value);
 
+/* ---------- Spotify ---------- */
+const SP_SCOPE='user-modify-playback-state user-read-playback-state user-read-currently-playing playlist-read-private';
+const spRedirect=()=>location.origin+location.pathname.replace(/index\.html$/,'');
+const spTokens=()=>{try{return JSON.parse(localStorage.getItem('mj_sp')||'null')}catch(e){return null}};
+const spReady=()=>{const t=spTokens();return !!(t&&t.refresh)};
+let pendingPlay=null;
+const b64u=buf=>btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+async function spConnect(){
+  const id=$('#spId').value.trim()||localStorage.getItem('mj_sp_id')||'';
+  if(!/^\w{20,64}$/.test(id)){toast('Paste your Spotify client ID first.');return}
+  localStorage.setItem('mj_sp_id',id);
+  const v=b64u(crypto.getRandomValues(new Uint8Array(48))),c=b64u(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(v))),st=b64u(crypto.getRandomValues(new Uint8Array(12)));
+  localStorage.setItem('mj_sp_v',v);localStorage.setItem('mj_sp_state',st);
+  location.href='https://accounts.spotify.com/authorize?'+new URLSearchParams({response_type:'code',client_id:id,scope:SP_SCOPE,redirect_uri:spRedirect(),code_challenge_method:'S256',code_challenge:c,state:st})}
+async function spToken(body){
+  const r=await fetch('https://accounts.spotify.com/api/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams(body)}),j=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error(j.error_description||j.error||('HTTP '+r.status));
+  const old=spTokens()||{};localStorage.setItem('mj_sp',JSON.stringify({access:j.access_token,refresh:j.refresh_token||old.refresh,exp:Date.now()+(j.expires_in||3600)*1000-30000}));return j}
+async function spAccess(){
+  const t=spTokens();if(!t)throw new Error('not connected');
+  if(t.exp>Date.now())return t.access;
+  try{await spToken({grant_type:'refresh_token',refresh_token:t.refresh,client_id:localStorage.getItem('mj_sp_id')})}catch(e){localStorage.removeItem('mj_sp');spStatusUpdate();throw new Error('expired')}
+  return spTokens().access}
+async function spFetch(path,opt={}){const a=await spAccess();return fetch('https://api.spotify.com/v1'+path,{...opt,headers:{Authorization:'Bearer '+a,...(opt.headers||{})}})}
+async function spError(r){const j=await r.json().catch(()=>({})),e=new Error((j.error&&j.error.message)||('HTTP '+r.status));e.status=r.status;e.reason=j.error&&j.error.reason;return e}
+function spErr(e){
+  const m=String(e&&e.message||e);
+  if(e&&(e.reason==='NO_ACTIVE_DEVICE'||e.status===404))return 'Spotify is not active on your phone. Open the Spotify app, then ask me again.';
+  if(e&&e.reason==='PREMIUM_REQUIRED')return 'Spotify says that needs Premium.';
+  if(/not connected|expired/i.test(m)||(e&&e.status===401))return 'Spotify needs reconnecting. Open Settings and tap Connect Spotify.';
+  if(e&&e.status===429)return 'Spotify is busy. Try again in a moment.';
+  return 'Spotify said: '+m.slice(0,100)}
+function spStatusUpdate(){const el=$('#spStatus');if(el)el.textContent=spReady()?'Connected. Open the Spotify app on your phone before asking for music.':'Not connected.'}
+const spNorm=t=>t.toLowerCase().replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+async function spFind(q){
+  let type=null,term=q.trim(),artist=null,mine=false,m=term.match(/^(?:the\s+)?(?:(my)\s+)?(album|playlist|artist|song|track)\s+(.+)/i);
+  if(m){mine=!!m[1];type=m[2].toLowerCase();if(type==='song')type='track';term=m[3]}
+  else if((m=term.match(/^my\s+(.+?)\s+playlist$/i))){type='playlist';mine=true;term=m[1]}
+  m=term.match(/^(.+?)\s+by\s+(.+)$/i);if(m&&(!type||type==='track'||type==='album')){term=m[1];artist=m[2]}
+  if(type==='playlist'&&mine){const r=await spFetch('/me/playlists?limit=50');if(r.ok){const L=((await r.json()).items||[]).filter(Boolean),k=spNorm(term),pl=L.find(x=>spNorm(x.name)===k)||L.find(x=>spNorm(x.name).includes(k));if(pl)return{context:pl.uri,label:pl.name+' (your playlist)'}}}
+  const r=await spFetch('/search?'+new URLSearchParams({q:artist?term+' '+artist:term,type:type||'track,artist',limit:'5'}));
+  if(!r.ok)throw await spError(r);
+  const j=await r.json(),first=k=>((j[k]||{}).items||[]).find(Boolean);
+  if(type==='playlist'){const x=first('playlists');return x?{context:x.uri,label:x.name}:null}
+  if(type==='album'){const x=first('albums');return x?{context:x.uri,label:x.name+' by '+((x.artists||[]).map(a=>a.name).join(' and ')||'unknown')}:null}
+  if(type==='artist'){const x=first('artists');return x?{context:x.uri,label:x.name}:null}
+  const a=first('artists'),t=first('tracks');
+  if(type!=='track'&&a&&!artist&&spNorm(a.name)===spNorm(term))return{context:a.uri,label:a.name};
+  if(t)return{uris:[t.uri],label:t.name+' by '+((t.artists||[]).map(x=>x.name).join(' and ')||'unknown')};
+  return a?{context:a.uri,label:a.name}:null}
+async function spDevice(){
+  const r=await spFetch('/me/player/devices');if(!r.ok)throw await spError(r);
+  const L=(await r.json()).devices||[];if(!L.length)return null;
+  const last=localStorage.getItem('mj_sp_dev');
+  return L.find(d=>d.is_active)||L.find(d=>d.id===last)||L.find(d=>/smartphone/i.test(d.type))||L[0]}
+async function spStart(dev,pick){
+  if(!dev.is_active){await spFetch('/me/player',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({device_ids:[dev.id],play:false})});await new Promise(r=>setTimeout(r,500))}
+  const r=await spFetch('/me/player/play?device_id='+enc(dev.id),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(pick.uris?{uris:pick.uris}:{context_uri:pick.context})});
+  if(!r.ok)throw await spError(r);localStorage.setItem('mj_sp_dev',dev.id)}
+async function spPlay(query,heardTxt,quiet,tries){
+  heardTxt=heardTxt||('play '+query);thinking=true;setState();$('#heard').textContent='Finding '+query+'…';
+  let msg,ok=false;
+  try{
+    const pick=await spFind(query);
+    if(!pick)msg=`I could not find ${query} on Spotify.`;
+    else{const dev=await spDevice();
+      if(!dev){pendingPlay={q:query,heard:heardTxt,t:Date.now(),n:(tries||0)+1};if(isAndroid)launch(appIntent('com.spotify.music'),'Open Spotify, then come back to Jarvis');msg='I cannot see Spotify running. Open it, then come back and I will start it.'}
+      else{await spStart(dev,pick);ok=true;pendingPlay=null;msg=`Playing ${pick.label} on Spotify.`}}
+  }catch(e){msg=spErr(e)}
+  thinking=false;setState();$('#heard').textContent='Waiting for “'+(db.settings.wake||'jarvis')+'”…';
+  if(!ok||!quiet)reply(heardTxt,msg)}
+async function spControl(action,heardTxt){
+  const M={pause:['PUT','/me/player/pause','Paused.'],resume:['PUT','/me/player/play','Resuming.'],next:['POST','/me/player/next','Skipping.'],prev:['POST','/me/player/previous','Going back.'],shuffle_on:['PUT','/me/player/shuffle?state=true','Shuffle is on.'],shuffle_off:['PUT','/me/player/shuffle?state=false','Shuffle is off.']};
+  let msg;try{
+    if(action==='now'){const r=await spFetch('/me/player/currently-playing');if(r.status===204)msg='Nothing is playing right now.';else if(!r.ok)throw await spError(r);else{const j=await r.json(),it=j&&j.item;msg=it?`This is ${it.name} by ${((it.artists||[]).map(a=>a.name).join(' and '))||'unknown'}.`:'Nothing is playing right now.'}}
+    else{const [meth,path,ok]=M[action],r=await spFetch(path,{method:meth});if(!r.ok)throw await spError(r);msg=ok}
+  }catch(e){msg=spErr(e)}
+  reply(heardTxt,msg)}
+function doPlayAny(q,svc){if((!svc||/spotify/i.test(svc))&&spReady()){spPlay(q,'play '+q,true);return 'Playing '+q+' on Spotify.'}return doPlay(q,svc)}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&pendingPlay&&Date.now()-pendingPlay.t<120000&&pendingPlay.n<3){const p=pendingPlay;pendingPlay=null;setTimeout(()=>spPlay(p.q,p.heard,false,p.n),1500)}});
+$('#spRedirect').textContent=spRedirect();$('#spId').value=localStorage.getItem('mj_sp_id')||'';spStatusUpdate();
+$('#spConnect').onclick=spConnect;
+$('#spCopy').onclick=()=>{try{navigator.clipboard.writeText(spRedirect());toast('Redirect URI copied.')}catch(e){toast('Press and hold the address to copy it.')}};
+$('#spDisc').onclick=()=>{['mj_sp','mj_sp_v','mj_sp_state','mj_sp_dev'].forEach(k=>localStorage.removeItem(k));spStatusUpdate();toast('Spotify disconnected.')};
+$('#spTest').onclick=async()=>{if(!spReady()){toast('Connect Spotify first.');return}try{const r=await spFetch('/me/player/devices');if(!r.ok)throw await spError(r);const L=(await r.json()).devices||[];toast(L.length?'Devices: '+L.map(d=>d.name).join(', '):'No Spotify device is awake. Open the Spotify app first.')}catch(e){toast(spErr(e))}};
+(async()=>{
+  const q=new URLSearchParams(location.search);if(!q.has('code')&&!q.has('error'))return;
+  const st=localStorage.getItem('mj_sp_state'),v=localStorage.getItem('mj_sp_v');
+  try{history.replaceState({},'',spRedirect())}catch(e){}
+  if(q.has('error')){toast('Spotify: '+q.get('error'));return}
+  if(!st||!v||q.get('state')!==st){toast('Spotify sign-in could not be verified. Try again.');return}
+  try{await spToken({grant_type:'authorization_code',code:q.get('code'),redirect_uri:spRedirect(),client_id:localStorage.getItem('mj_sp_id'),code_verifier:v});
+    localStorage.removeItem('mj_sp_v');localStorage.removeItem('mj_sp_state');go('settings');spStatusUpdate();toast('Spotify connected.')}
+  catch(e){toast(String(e.message||e).slice(0,120))}})();
+
 /* ---------- conversational brain (Gemini) ---------- */
 const GURL='https://generativelanguage.googleapis.com/v1beta/';
 const brainKey=()=>localStorage.getItem('mj_gemini')||'';
@@ -582,7 +692,7 @@ function runActions(list){
     else if(a.type==='add_task'&&a.text)memory.add('tasks',{text:a.text,priority:a.priority||'medium',done:false});
     else if(a.type==='add_research'&&(a.text||a.url))memory.add('research',{title:a.text||a.url,url:a.url||'',notes:a.notes||'',tags:a.tags||[]});
     else if(['open_app','call','text_message','play_music','navigate'].includes(a.type)){
-      const r=a.type==='open_app'?doOpenApp(a.text||''):a.type==='call'?doCall(a.text||''):a.type==='text_message'?doText(a.text||'',a.notes||''):a.type==='play_music'?doPlay(a.text||'',a.query):doNavigate(a.text||'');
+      const r=a.type==='open_app'?doOpenApp(a.text||''):a.type==='call'?doCall(a.text||''):a.type==='text_message'?doText(a.text||'',a.notes||''):a.type==='play_music'?doPlayAny(a.text||'',a.query):doNavigate(a.text||'');
       if(/^I (could not|do not)|works on an Android/.test(r))bad++}
     else if(a.type==='open_page'&&['home','memory','tasks','research','voice','settings'].includes((a.text||'').toLowerCase()))go(a.text.toLowerCase());
     else if(['complete_task','delete_task','set_priority'].includes(a.type)){const t=findBy(sortedTasks(),q);if(!t)bad++;else if(a.type==='complete_task')memory.edit('tasks',t.id,{done:true});else if(a.type==='delete_task')memory.remove('tasks',t.id);else memory.edit('tasks',t.id,{priority:a.priority||'medium'})}
