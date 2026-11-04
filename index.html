@@ -1036,62 +1036,135 @@ $('#signIn').onclick=signIn;$('#signOut').onclick=()=>signOut();$('#bannerBtn').
 /* ---------- living hologram ---------- */
 (()=>{
   const cvs=$$('.holo-cv');if(!cvs.length)return;
-  const N=900,P=[],XY=new Float32Array(N*3);for(let i=0;i<N;i++){const y=1-2*(i+.5)/N,r=Math.sqrt(1-y*y),a=i*2.399963;P.push([Math.cos(a)*r,y,Math.sin(a)*r,Math.random()*6.28])}
+  const N=1000,P=[],XY=new Float32Array(N*3);
+  for(let i=0;i<N;i++){const y=1-2*(i+.5)/N,r=Math.sqrt(1-y*y),a=i*2.399963;P.push([Math.cos(a)*r,y,Math.sin(a)*r,Math.random()*6.28])}
+  
   const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
   const COL={idle:[94,200,255],listening:[150,240,255],speaking:[190,225,255],muted:[105,115,130],thinking:[175,150,255]},ORANGE=[255,120,70];
-  let C=[...COL.idle],E=.25,ang=0,last=0;
+  let C=[...COL.idle],E=.25,ang=0,last=0,scan=0;
+  
   const rgba=(c,a)=>`rgba(${c[0]|0},${c[1]|0},${c[2]|0},${Math.max(0,Math.min(1,a))})`;
-  function arcs(g,cx,r,start,n,span,lw,col,a){g.lineWidth=lw;g.strokeStyle=rgba(col,a);for(let i=0;i<n;i++){const a0=start+i*6.2832/n;g.beginPath();g.arc(cx,cx,r,a0,a0+span);g.stroke()}}
+
   function draw(c,t,st){
     if(!c.offsetParent)return;
     const d=Math.min(devicePixelRatio||1,2),w=Math.round(c.getBoundingClientRect().width*d);if(!w)return;if(c.width!==w){c.width=w;c.height=w}
     const g=c.getContext('2d'),W=w,cx=W/2,R=W/2*.94,u=W/340;
+    
     g.clearRect(0,0,W,W);
-    const pulse=1+E*.03*Math.sin(t*(st==='speaking'?13:3.2));
+    
+    // 1. THE GLOW TRICK: Additive blending makes overlapping lights brighter
+    g.globalCompositeOperation = 'lighter';
+
+    const pulse=1+E*.04*Math.sin(t*(st==='speaking'?15:4));
     g.save();g.translate(cx,cx);g.scale(pulse,pulse);g.translate(-cx,-cx);
-    // glow
-    const gr=g.createRadialGradient(cx,cx,0,cx,cx,R);gr.addColorStop(0,rgba(C,.20+E*.25));gr.addColorStop(.6,rgba(C,.05));gr.addColorStop(1,rgba(C,0));
-    g.fillStyle=gr;g.fillRect(0,0,W,W);
-    // sphere of points
+    
+    // --- PLASMA CORE ---
+    const coreR = R*.3 + (E*R*.1);
+    const gr=g.createRadialGradient(cx,cx,0,cx,cx,coreR);
+    gr.addColorStop(0,rgba(C,.4+E*.4));
+    gr.addColorStop(.5,rgba(C,.1+E*.1));
+    gr.addColorStop(1,rgba(C,0));
+    g.fillStyle=gr;g.beginPath();g.arc(cx,cx,coreR,0,6.2832);g.fill();
+
+    // --- 3D PARTICLE SPHERE ---
     const ca=Math.cos(ang),sa=Math.sin(ang),tilt=.38,ct=Math.cos(tilt),stl=Math.sin(tilt),Rs=R*.74;
-    for(let i=0;i<N;i++){const p=P[i];
+    for(let i=0;i<N;i++){
+      const p=P[i];
       const x=p[0]*ca+p[2]*sa,z=-p[0]*sa+p[2]*ca,y=p[1]*ct-z*stl,z2=p[1]*stl+z*ct,dep=(z2+1)/2;
       XY[i*3]=cx+x*Rs;XY[i*3+1]=cx+y*Rs;XY[i*3+2]=dep;
-      const tw=.7+.3*Math.sin(t*2+p[3]),al=(.18+.82*dep)*tw,sz=(.9+2*dep)*d;
-      g.fillStyle=rgba(C,al);g.fillRect(XY[i*3]-sz/2,XY[i*3+1]-sz/2,sz,sz);
+      
+      const tw=.7+.3*Math.sin(t*3+p[3]),al=(.1+.9*dep)*tw,sz=(.8+1.5*dep)*d;
+      
+      // Draw particles as vertical streaks for a "data falling" look
+      const streak = st==='thinking' ? 4*d : 1.5*d;
+      g.fillStyle=rgba(C,al);
+      g.fillRect(XY[i*3]-sz/2, XY[i*3+1]-streak/2, sz, streak);
     }
-    g.strokeStyle=rgba(C,.2+E*.15);g.lineWidth=.7*d;g.beginPath();const lim=Rs*.2;
-    for(let i=0;i<N-55;i+=2)for(const o of [34,55]){const j=i+o;if(XY[i*3+2]>.45&&XY[j*3+2]>.45){const dx=XY[i*3]-XY[j*3],dy=XY[i*3+1]-XY[j*3+1];if(dx*dx+dy*dy<lim*lim){g.moveTo(XY[i*3],XY[i*3+1]);g.lineTo(XY[j*3],XY[j*3+1])}}}
+
+    // --- CONNECTING LINES ---
+    g.strokeStyle=rgba(C,.15+E*.2);g.lineWidth=.8*d;g.beginPath();const lim=Rs*.22;
+    for(let i=0;i<N-55;i+=2)for(const o of [34,55]){
+      const j=i+o;
+      if(XY[i*3+2]>.45&&XY[j*3+2]>.45){
+        const dx=XY[i*3]-XY[j*3],dy=XY[i*3+1]-XY[j*3+1];
+        if(dx*dx+dy*dy<lim*lim){g.moveTo(XY[i*3],XY[i*3+1]);g.lineTo(XY[j*3],XY[j*3+1])}
+      }
+    }
     g.stroke();
-    // rings
-    g.lineCap='butt';
-    g.lineWidth=1*d;g.strokeStyle=rgba(C,.28);g.beginPath();g.arc(cx,cx,R,0,6.2832);g.stroke();
-    for(let i=0;i<72;i++){const a=i*.0873+ang*.3,l=i%6?3:8;g.strokeStyle=rgba(C,i%6?.25:.5);g.lineWidth=1*d;g.beginPath();g.moveTo(cx+Math.cos(a)*R,cx+Math.sin(a)*R);g.lineTo(cx+Math.cos(a)*(R-l*u*d),cx+Math.sin(a)*(R-l*u*d));g.stroke()}
-    arcs(g,cx,R*.92,ang*1.1,3,1.25,3*d*u,C,.8);
-    g.setLineDash([3*d*u,9*d*u]);g.lineDashOffset=-t*18*d;arcs(g,cx,R*.85,0,1,6.2832,1.5*d*u,C,.6);g.setLineDash([]);
-    arcs(g,cx,R*.66,-ang*1.7,2,2.1,3.5*d*u,C,.85);
-    g.setLineDash([2*d*u,5*d*u]);g.lineDashOffset=t*10*d;arcs(g,cx,R*.48,0,1,6.2832,1*d*u,C,.45);g.setLineDash([]);
-    // pulse waves
-    const rate=st==='thinking'?.8:st==='speaking'?.9:st==='listening'?.55:.2,wc=st==='speaking'?ORANGE:C;
-    for(let k=0;k<3;k++){const ph=(t*rate+k/3)%1;g.lineWidth=(1+2*(1-ph))*d;g.strokeStyle=rgba(wc,(1-ph)*(.12+E*.5));g.beginPath();g.arc(cx,cx,R*(.3+.7*ph),0,6.2832);g.stroke()}
-    // title
-    g.textAlign='center';g.textBaseline='middle';g.font=`700 ${Math.round(W*.072)}px Orbitron,'Segoe UI',sans-serif`;if('letterSpacing' in g)g.letterSpacing=Math.round(W*.01)+'px';
-    g.shadowColor=rgba(C,.9);g.shadowBlur=(10+E*18)*d;g.fillStyle=`rgba(255,255,255,${.82+E*.18})`;g.fillText('J.A.R.V.I.S',cx,cx);g.shadowBlur=0;
-    g.strokeStyle=rgba(C,.5);g.lineWidth=1*d;g.beginPath();g.moveTo(cx-R*.62,cx);g.lineTo(cx-R*.5,cx);g.moveTo(cx+R*.5,cx);g.lineTo(cx+R*.62,cx);g.stroke();
+
+    // --- RINGS & RETICLES ---
+    g.lineWidth=1.5*d;g.strokeStyle=rgba(C,.6);
+    
+    // Outer rotating brackets
+    for(let i=0;i<4;i++){
+      const a = ang*1.5 + (i*Math.PI/2);
+      g.beginPath();
+      g.arc(cx,cx, R*1.05, a, a+0.4);
+      g.stroke();
+    }
+
+    // Inner dashed rings
+    g.setLineDash([4*d, 12*d]);
+    g.lineDashOffset = t * 30 * d;
+    g.beginPath();g.arc(cx,cx,R*.85,0,6.2832);g.stroke();
+    
+    g.setLineDash([10*d, 20*d]);
+    g.lineDashOffset = -t * 40 * d;
+    g.strokeStyle=rgba(C,.4);
+    g.beginPath();g.arc(cx,cx,R*.55,0,6.2832);g.stroke();
+    g.setLineDash([]);
+
+    // --- SCANNING LASER ---
+    scan = (scan + 3) % W;
+    const scanAlpha = Math.sin((scan/W)*Math.PI) * 0.4; // Fade at top and bottom
+    g.fillStyle = rgba(C, scanAlpha);
+    g.fillRect(0, scan, W, 2*d);
+    
+    // --- FLOATING DATA TEXT ---
+    g.font = `500 ${Math.round(W*.03)}px Orbitron, monospace`;
+    g.fillStyle = rgba(C, 0.6);
+    g.textAlign = 'left';
+    // Random hex values that update occasionally
+    const h1 = Math.random().toString(16).substr(2,4).toUpperCase();
+    const h2 = Math.random().toString(16).substr(2,4).toUpperCase();
+    g.fillText(`SYS:${h1}`, W*0.1, W*0.2);
+    g.fillText(`MEM:${h2}`, W*0.75, W*0.8);
+
+    // --- TITLE & HUD BARS ---
+    g.textAlign='center';g.textBaseline='middle';g.font=`700 ${Math.round(W*.08)}px Orbitron,'Segoe UI',sans-serif`;
+    if('letterSpacing' in g)g.letterSpacing=Math.round(W*.015)+'px';
+    
+    g.shadowColor=rgba(C,1);g.shadowBlur=(15+E*25)*d;
+    g.fillStyle=`rgba(255,255,255,${.9+E*.1})`;
+    g.fillText('J.A.R.V.I.S',cx,cx);
+    g.shadowBlur=0;
+    
+    // HUD brackets around the text
+    g.strokeStyle=rgba(C,.8);g.lineWidth=2*d;
+    g.beginPath();
+    g.moveTo(cx-R*.7, cx-R*.1); g.lineTo(cx-R*.85, cx-R*.1); g.lineTo(cx-R*.85, cx+R*.1); g.lineTo(cx-R*.7, cx+R*.1);
+    g.moveTo(cx+R*.7, cx-R*.1); g.lineTo(cx+R*.85, cx-R*.1); g.lineTo(cx+R*.85, cx+R*.1); g.lineTo(cx+R*.7, cx+R*.1);
+    g.stroke();
+
     g.restore();
   }
+
   function frame(now){
     const t=now/1000,dt=Math.min(.05,t-last||.016);last=t;
     const st=document.body.dataset.state||'idle';
     const tE=st==='speaking'?.55+.45*Math.abs(Math.sin(t*7)*Math.sin(t*3.1+1)):st==='thinking'?.8:st==='listening'?.65:st==='muted'?.08:.25;
     E+=(tE-E)*Math.min(1,dt*8);
     const tc=COL[st]||COL.idle;for(let i=0;i<3;i++)C[i]+=(tc[i]-C[i])*Math.min(1,dt*4);
-    ang+=dt*(st==='thinking'?1.1:st==='speaking'?.8:st==='listening'?.55:st==='muted'?.08:.22);
-    cvs.forEach(c=>draw(c,t,st));requestAnimationFrame(frame)}
+    ang+=dt*(st==='thinking'?1.5:st==='speaking'?1.2:st==='listening'?.8:st==='muted'?.1:.3);
+    
+    cvs.forEach(c=>draw(c,t,st));
+    requestAnimationFrame(frame)
+  }
+  
   if(reduce)cvs.forEach(c=>draw(c,2,'idle'));else requestAnimationFrame(frame);
 })();
 
-/* ---------- standby + always-on ---------- */
+  /* ---------- standby + always-on ---------- */
 async function keepAwake(on,force){try{
   if(on&&(force||localStorage.getItem('mj_awake')!=='0')&&'wakeLock' in navigator){if(!wl){wl=await navigator.wakeLock.request('screen');wl.addEventListener('release',()=>{wl=null})}}
   else if(!on&&wl){await wl.release();wl=null}}catch{}}
