@@ -203,7 +203,8 @@ nav button{flex:1;min-width:0;flex-direction:column;justify-content:center;gap:2
   <div class="glass card" style="margin-top:14px"><h2>Commands</h2>
     <div class="muted">add note … · show notes · search notes … · delete last note · delete note 2<br>add task … (add “high priority” at the end) · complete task 1 · delete task … · set priority of task 2 to high · show tasks<br>open spotify · call mom · text mom saying … · play … (plays on Spotify) · pause · skip · what's playing · navigate to … · research quantum computing (Jarvis writes a brief) · deep dive on … · add research … (plain save) · show research · search research … · delete research 1<br>go to home / memory / tasks / research / settings · mute · unmute</div></div>
 </section>
-
+<div class="muted">... · morning digest · go to home / memory / tasks... </div>
+  
 <section id="settings">
   <h1>Settings</h1>
   <div class="glass card">
@@ -552,6 +553,10 @@ if(m=c.match(/^(?:add|schedule)\s+(.+?)\s+(?:to\s+)?(?:my\s+)?calendar$/i)) {
   return say(doAddEvent(m[1]));
 }
 
+  if(/^(?:morning digest|good morning|give me (?:the|my) morning brief(?:ing)?)$/i.test(c)) {
+  const digest = await getMorningDigest();
+  return reply(input, digest);
+}
   if(/^(?:what(?:'s| is) the )?time$/i.test(c))return say('It is '+new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})+'.');
   if(/^(?:hello|hi|hey)$/i.test(c))return say('At your service.');
   if(brainReady())return askBrain(input);
@@ -628,6 +633,61 @@ function doNavigate(place){const t=launch(webIntent('https://www.google.com/maps
     return events.join('. ');
   } catch (e) { 
     return "Fetch Error: " + (e.message || e); 
+  }
+}
+  async function getWeather() {
+  try {
+    // Coordinates for Dar es Salaam
+    const r = await fetch('https://api.open-meteo.com/v1/forecast?latitude=-6.8&longitude=39.2&current_weather=true');
+    const j = await r.json();
+    const temp = j.current_weather.temperature;
+    const wind = j.current_weather.windspeed;
+    return `It is currently ${temp} degrees with winds at ${wind} kilometers per hour.`;
+  } catch (e) {
+    return "Weather data is currently unavailable.";
+  }
+}
+  async function getMorningDigest() {
+  if (!brainReady()) return "Please connect your Gemini Brain in Settings first.";
+  
+  thinking = true; setState();
+  
+  try {
+    // 1. Gather the data
+    const weather = await getWeather();
+    const calendar = signedIn ? await getCalendar() : "Calendar not connected.";
+    
+    const openTasks = db.tasks.filter(t => !t.done).slice(0, 3).map(t => t.text).join(', ');
+    const tasksStr = openTasks ? openTasks : "No urgent tasks on your list.";
+    
+    // 2. Send to Gemini to format
+    const prompt = `Give me a spoken morning briefing. Here is the data:
+    Weather: ${weather}
+    Calendar: ${calendar}
+    Top Tasks: ${tasksStr}
+    
+    Speak directly to me. Keep it under 4 sentences. Be calm, slightly witty, and very British.`;
+
+    const res = await fetch(GURL + 'models/gemini-flash-latest:generateContent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': brainKey() },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: SYS }] },
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.7, maxOutputTokens: 200 }
+      })
+    });
+
+    if (!res.ok) throw new Error("Gemini Error");
+    const data = await res.json();
+    const digest = data.candidates[0].content.parts[0].text;
+    
+    thinking = false; setState();
+    return digest;
+
+  } catch (e) {
+    thinking = false; setState();
+    return "I am afraid I could not compile your morning digest right now, sir.";
   }
 }
   function doAddEvent(title) {
