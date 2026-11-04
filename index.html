@@ -287,7 +287,12 @@ nav button{flex:1;min-width:0;flex-direction:column;justify-content:center;gap:2
 
 <script>
 'use strict';
-const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+window.unsolicitedErrors = [];
+window.onerror = function(msg, url, line) {
+  window.unsolicitedErrors.push({msg, line, time: Date.now()});
+  console.warn("Jarvis caught an error:", msg);
+};
+  const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 const FILE='jarvis_data.json',SCOPE='https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/calendar.readonly openid email';
 const h=(t,a={},...k)=>{const e=document.createElement(t);for(const[n,v]of Object.entries(a)){if(n==='class')e.className=v;else if(n.startsWith('on'))e.addEventListener(n.slice(2),v);else if(v!=null&&v!==false)e.setAttribute(n,v===true?'':v)}for(const c of k.flat())e.append(c&&c.nodeType?c:document.createTextNode(c??''));return e};
 const blank=()=>({notes:[],tasks:[],research:[],contacts:[],settings:{wake:'jarvis',voice:'',rate:.95,pitch:.9,muted:false},conversations:[]});
@@ -331,12 +336,20 @@ async function signIn(){
 async function onToken(resp){
   if(resp.error){toast('Sign-in failed: '+resp.error);return}
   token=resp.access_token;signedIn=true;
+  
+  // Save the token and when it expires (usually 1 hour)
+  localStorage.setItem('mj_g_token', token);
+  localStorage.setItem('mj_g_exp', Date.now() + (resp.expires_in * 1000) - 60000); // Refresh 1 min before expiry
+  
   try{const u=await(await gfetch('https://www.googleapis.com/oauth2/v3/userinfo')).json();$('#acct').textContent='Signed in as '+(u.email||'your Google account')}catch{}
   await memory.load();$('#banner').hidden=true;
   speak('Drive connected. Memory loaded.')}
 function signOut(expired){
   if(token&&!expired&&window.google&&google.accounts)google.accounts.oauth2.revoke(token);
-  token=null;signedIn=false;fileId=null;tokenClient=null;$('#acct').textContent=expired===true?'Session expired. Sign in again.':'Not signed in.';
+  token=null;signedIn=false;fileId=null;tokenClient=null;
+  localStorage.removeItem('mj_g_token'); // <-- Add this
+  localStorage.removeItem('mj_g_exp');   // <-- Add this
+  $('#acct').textContent=expired===true?'Session expired. Sign in again.':'Not signed in.';
   sync('Local only');$('#banner').hidden=false}
 
 /* ---------- memory system (Drive-backed) ---------- */
@@ -553,6 +566,17 @@ if(m=c.match(/^(?:add|schedule)\s+(.+?)\s+(?:to\s+)?(?:my\s+)?calendar$/i)) {
   return say(doAddEvent(m[1]));
 }
 
+ if(/^(?:run diagnostics|system status|check systems|are you okay)$/i.test(c)) {
+  const diag = await runDiagnostics();
+  return reply(input, diag);  
+}
+  
+ if(/^(?:read error log|what went wrong|find bugs)$/i.test(c)) {
+  if (!window.unsolicitedErrors.length) return say('My system log is clean, sir. No bugs detected.');
+  const lastErr = window.unsolicitedErrors[window.unsolicitedErrors.length - 1];
+  return say(`I detected ${window.unsolicitedErrors.length} recent errors. The last one was: ${lastErr.msg} on line ${lastErr.line}.`);
+    }
+
   if(/^(?:morning digest|good morning|give me (?:the|my) morning brief(?:ing)?)$/i.test(c)) {
   const digest = await getMorningDigest();
   return reply(input, digest);
@@ -647,6 +671,43 @@ function doNavigate(place){const t=launch(webIntent('https://www.google.com/maps
     return "Weather data is currently unavailable.";
   }
 }
+  async function runDiagnostics() {
+  thinking = true; setState();
+  let report = "Running system diagnostics. ";
+  
+  // 1. Check Internet
+  if (!navigator.onLine) report += "Network connection is offline. ";
+  else report += "Network is online. ";
+  
+  // 2. Check Google Drive / Calendar
+  if (!signedIn) report += "Google Drive and Calendar are offline. Please sign in. ";
+  else {
+    const exp = Number(localStorage.getItem('mj_g_exp'));
+    if (Date.now() > exp) report += "Google token has expired, a re-login is required. ";
+    else report += "Google Drive is connected. ";
+  }
+  
+  // 3. Check Gemini Brain
+  if (!brainKey()) report += "Gemini Brain is offline. ";
+  else {
+    try {
+      const r = await fetch(GURL + 'models?pageSize=1', {headers:{'x-goog-api-key': brainKey()}});
+      if (r.ok) report += "Gemini Brain is online and responding. ";
+      else report += "Gemini Brain returned an error. ";
+    } catch(e) { report += "Gemini Brain is unreachable. "; }
+  }
+  
+  // 4. Check Spotify
+  if (spReady()) report += "Spotify is linked. ";
+  else report += "Spotify is not connected. ";
+  
+  // 5. Check Fish Audio
+  if (localStorage.getItem('mj_fish_key')) report += "Fish Audio voice module is active. ";
+  else report += "Using system voice. ";
+  
+  thinking = false; setState();
+  return report + "All systems checked.";
+                                                                                                                                                          }
   async function getMorningDigest() {
   if (!brainReady()) return "Please connect your Gemini Brain in Settings first.";
   
@@ -1191,7 +1252,17 @@ if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol))navigator.s
 
 /* ---------- boot ---------- */
 const gs=document.createElement('script');gs.src='https://accounts.google.com/gsi/client';gs.async=true;gs.onload=initAuth;document.head.append(gs);
-renderAll();applySettings();
+// Auto-restore Google Session
+const savedToken = localStorage.getItem('mj_g_token');
+const savedExp = localStorage.getItem('mj_g_exp');
+if (savedToken && savedExp && Date.now() < Number(savedExp)) {
+  token = savedToken;
+  signedIn = true;
+  $('#acct').textContent = 'Signed in (Session restored)';
+  $('#banner').hidden = true;
+  memory.load(); 
+}
+  renderAll();applySettings();
 </script>
 </body>
 </html>
