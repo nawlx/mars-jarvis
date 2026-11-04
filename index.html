@@ -588,24 +588,44 @@ function doNavigate(place){const t=launch(webIntent('https://www.google.com/maps
  async function getCalendar() {
   if (!signedIn) return "You need to sign in with Google first.";
   try {
-    const t = new Date().toISOString();
-    // We use fetch directly here to catch the exact error message
-    const r = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${t}&maxResults=5&singleEvents=true&orderBy=startTime`, {
+    // Look 7 days into the future
+    const tMin = new Date().toISOString();
+    const tMax = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+    
+    const r = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${tMin}&timeMax=${tMax}&maxResults=10&singleEvents=true&orderBy=startTime`, {
       headers: { Authorization: 'Bearer ' + token }
     });
     
     if (!r.ok) {
        const err = await r.text();
-       return "Calendar API Error: " + r.status + " " + err.slice(0, 60); // Show first 60 chars of error
+       return "Calendar API Error: " + r.status + " " + err.slice(0, 60);
     }
     
     const j = await r.json();
-    if (!j.items || j.items.length === 0) return "You have no upcoming events.";
+    if (!j.items || j.items.length === 0) return "You have no upcoming events in the next 7 days.";
     
-    return j.items.map(e => {
-      const time = e.start.dateTime ? new Date(e.start.dateTime).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : 'All day';
-      return `${e.summary} at ${time}`;
-    }).join(', ');
+    // Format nicely and remove duplicates
+    const seen = new Set();
+    const events = [];
+    
+    j.items.forEach(e => {
+      const isAllDay = !e.start.dateTime;
+      const d = new Date(e.start.dateTime || e.start.date);
+      const dateStr = d.toLocaleDateString([], {weekday:'short', month:'short', day:'numeric'});
+      
+      // If it's an all-day event, don't show a time. Otherwise, show the time.
+      const timeStr = isAllDay ? '' : ' at ' + d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+      
+      const formatted = `${e.summary} on ${dateStr}${timeStr}`;
+      
+      // Only add it if we haven't seen this exact event string yet
+      if (!seen.has(formatted)) {
+        seen.add(formatted);
+        events.push(formatted);
+      }
+    });
+    
+    return events.join('. ');
   } catch (e) { 
     return "Fetch Error: " + (e.message || e); 
   }
