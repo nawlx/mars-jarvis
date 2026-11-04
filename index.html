@@ -613,8 +613,8 @@ function doNavigate(place){const t=launch(webIntent('https://www.google.com/maps
   function doAddEvent(title) {
   const url = `intent:#Intent;action=android.intent.action.INSERT;type=vnd.android.cursor.item/event;S.title=${enc(title)};end`;
   const t = launch(url, `Add to calendar: ${title}`, true, 'Open Calendar');
-  return `I have prepared the calendar event. Tap the button to save it.` + tapNote(t);
-  }
+  return `I have prepared the calendar event: ${title}.` + tapNote(t);
+}
   function renderContacts(){           
   const L=$('#ctList');if(!L)return;L.replaceChildren();$('#ctCount').textContent=db.contacts.length?db.contacts.length+' contact'+(db.contacts.length===1?'':'s')+' saved.':'No contacts yet.';
    db.contacts.slice(0,12).forEach(c=>L.append(h('div',{class:'glass item'},h('div',{class:'t'},c.name,h('small',{},c.tel)),h('button',{class:'btn sm ghost',onclick:()=>memory.remove('contacts',c.id)},'Delete'))))}
