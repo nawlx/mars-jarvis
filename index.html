@@ -588,22 +588,31 @@ function doNavigate(place){const t=launch(webIntent('https://www.google.com/maps
  async function getCalendar() {
   if (!signedIn) return "You need to sign in with Google first.";
   try {
-    // Get events starting from today
     const t = new Date().toISOString();
-    const r = await gfetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${t}&maxResults=5&singleEvents=true&orderBy=startTime`);
+    // We use fetch directly here to catch the exact error message
+    const r = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${t}&maxResults=5&singleEvents=true&orderBy=startTime`, {
+      headers: { Authorization: 'Bearer ' + token }
+    });
+    
+    if (!r.ok) {
+       const err = await r.text();
+       return "Calendar API Error: " + r.status + " " + err.slice(0, 60); // Show first 60 chars of error
+    }
+    
     const j = await r.json();
     if (!j.items || j.items.length === 0) return "You have no upcoming events.";
     
-    // Format the events into a readable list
     return j.items.map(e => {
       const time = e.start.dateTime ? new Date(e.start.dateTime).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : 'All day';
       return `${e.summary} at ${time}`;
     }).join(', ');
   } catch (e) { 
-    return "I could not read your calendar."; 
+    return "Fetch Error: " + (e.message || e); 
   }
- }                       function renderContacts(){           const L=$('#ctList');if(!L)return;L.replaceChildren();$('#ctCount').textContent=db.contacts.length?db.contacts.length+' contact'+(db.contacts.length===1?'':'s')+' saved.':'No contacts yet.';
-  db.contacts.slice(0,12).forEach(c=>L.append(h('div',{class:'glass item'},h('div',{class:'t'},c.name,h('small',{},c.tel)),h('button',{class:'btn sm ghost',onclick:()=>memory.remove('contacts',c.id)},'Delete'))))}
+}
+  function renderContacts(){           
+  const L=$('#ctList');if(!L)return;L.replaceChildren();$('#ctCount').textContent=db.contacts.length?db.contacts.length+' contact'+(db.contacts.length===1?'':'s')+' saved.':'No contacts yet.';
+   db.contacts.slice(0,12).forEach(c=>L.append(h('div',{class:'glass item'},h('div',{class:'t'},c.name,h('small',{},c.tel)),h('button',{class:'btn sm ghost',onclick:()=>memory.remove('contacts',c.id)},'Delete'))))}
 $('#ctAdd').onclick=()=>{const n=$('#ctName').value.trim(),t=$('#ctTel').value.trim();if(!n||!/\d{3,}/.test(t)){toast('Enter a name and a phone number.');return}memory.add('contacts',{name:n,tel:t});$('#ctName').value=$('#ctTel').value=''};
 $('#ctClear').onclick=()=>{if(db.contacts.length&&confirm('Remove all '+db.contacts.length+' contacts from Jarvis?')){db.contacts=[];memory.save();renderAll()}};
 $('#ctImport').onclick=async()=>{
@@ -723,7 +732,7 @@ $('#spTest').onclick=async()=>{if(!spReady()){toast('Connect Spotify first.');re
 const GURL='https://generativelanguage.googleapis.com/v1beta/';
 const brainKey=()=>localStorage.getItem('mj_gemini')||'';
 const brainReady=()=>!!brainKey()&&db.settings.brain!==false&&navigator.onLine;
-const SYS="You are J.A.R.V.I.S., the calm, dry-witted British AI inside the user's personal dashboard called Mars Jarvis. Your replies are spoken aloud: plain text only, no markdown, no lists, at most three short sentences. Be warm, precise and a little witty. You can manage the dashboard by returning actions: add_note (text), add_task (text, priority), complete_task and delete_task (query = the task number or words from it), set_priority (query, priority), delete_note (query), add_research (text = title, plus url, notes, tags), open_page (text = home, memory, tasks, research, voice or settings), and phone actions: open_app (text = app name), call (text = contact name or number), text_message (text = contact name or number, notes = the message), play_music (text = song, artist or search; query = spotify, youtube_music or youtube, default spotify), navigate (text = place). Phone actions open the user's apps and ask them to tap to confirm, so word those replies in the present tense, for example 'Opening Spotify for you.' Only return an action when the user clearly asks for it, and make your reply confirm it in the past tense. Never claim to have done something you did not return as an action. Use the dashboard state to answer questions about tasks, notes and research. If you do not know something, say so plainly. The user speaks through speech recognition, so interpret transcription errors generously.";
+const SYS="You are J.A.R.V.I.S., the calm, dry-witted British AI inside the user's personal dashboard called Mars Jarvis. Your replies are spoken aloud: plain text only, no markdown, no lists, at most three short sentences. Be warm, precise and a little witty. You can manage the dashboard by returning actions: add_note (text), add_task (text, priority), complete_task and delete_task (query = the task number or words from it), set_priority (query, priority), delete_note (query), add_research (text = title, plus url, notes, tags), open_page (text = home, memory, tasks, research, voice or settings), and phone actions: open_app (text = app name), call (text = contact name or number), text_message (text = contact name or number, notes = the message), play_music (text = song, artist or search; query = spotify, youtube_music or youtube, default spotify), navigate (text = place). Phone actions open the user's apps and ask them to tap to confirm, so word those replies in the present tense, for example 'Opening Spotify for you.' Only return an action when the user clearly asks for it, and make your reply confirm it in the past tense. Never claim to have done something you did not return as an action. Use the dashboard state to answer questions about tasks, notes and research. If you do not know something, say so plainly. The user speaks through speech recognition, so interpret transcription errors generously.";You also have access to their Google Calendar under the [Calendar] section. Use it to answer questions about their schedule or upcoming events.
 const SCHEMA={type:'OBJECT',properties:{reply:{type:'STRING'},actions:{type:'ARRAY',items:{type:'OBJECT',properties:{type:{type:'STRING',enum:['add_note','add_task','complete_task','delete_task','set_priority','delete_note','add_research','open_page','open_app','call','text_message','play_music','navigate']},text:{type:'STRING'},priority:{type:'STRING',enum:['high','medium','low']},query:{type:'STRING'},url:{type:'STRING'},notes:{type:'STRING'},tags:{type:'ARRAY',items:{type:'STRING'}}},required:['type']}}},required:['reply']};
 const quotaMsg=em=>{const m=em.match(/retry in ([\d.]+)\s*s/i);return 'Gemini quota reached. '+(m?'Try again in about '+Math.ceil(m[1])+' seconds.':'Wait a minute, or pick a different model in Settings.')};
 const altModels=()=>{try{return JSON.parse(localStorage.getItem('mj_models')||'[]').filter(n=>n!==db.settings.model&&!/preview|exp/i.test(n))}catch{return[]}};
@@ -750,9 +759,12 @@ async function askBrain(input){
   let out=null,err=null;
   try{
     const hist=db.conversations.filter(c=>c.heard&&c.reply).slice(0,6).reverse().flatMap(c=>[{role:'user',parts:[{text:c.heard}]},{role:'model',parts:[{text:c.reply}]}]);
+   // Fetch calendar events so the Brain knows your schedule
+let calData = "Not connected.";
+if(signedIn) { try { calData = await getCalendar(); } catch(e){} }
     const call=m=>fetch(GURL+'models/'+encodeURIComponent(m)+':generateContent',{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':brainKey()},body:JSON.stringify({
       systemInstruction:{parts:[{text:SYS}]},
-      contents:[...hist,{role:'user',parts:[{text:input+'\n\n[Dashboard state]\n'+brainContext()}]}],
+      contents:[...hist,{role:'user',parts:[{text:input+'\n\n[Dashboard state]\n'+brainContext()+'\n\n[Calendar]\n'+calData}]}],
       generationConfig:{responseMimeType:'application/json',responseSchema:SCHEMA,temperature:.6,maxOutputTokens:1024}})});
     let r;for(const m of [db.settings.model||'gemini-flash-latest',...altModels()].slice(0,3)){r=await call(m);if(r.status!==429&&r.status!==404)break}
     if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error((e.error&&e.error.message)||('HTTP '+r.status))}
