@@ -1163,7 +1163,8 @@ $('#signIn').onclick=signIn;$('#signOut').onclick=()=>signOut();$('#bannerBtn').
   
   if(reduce)cvs.forEach(c=>draw(c,2,'idle'));else requestAnimationFrame(frame);
 })();
-/* ---------- standby + always-on ---------- */
+
+  /* ---------- standby + always-on ---------- */
 async function keepAwake(on,force){try{
   if(on&&(force||localStorage.getItem('mj_awake')!=='0')&&'wakeLock' in navigator){if(!wl){wl=await navigator.wakeLock.request('screen');wl.addEventListener('release',()=>{wl=null})}}
   else if(!on&&wl){await wl.release();wl=null}}catch{}}
