@@ -287,7 +287,7 @@ nav button{flex:1;min-width:0;flex-direction:column;justify-content:center;gap:2
 <script>
 'use strict';
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
-const FILE='jarvis_data.json',SCOPE='https://www.googleapis.com/auth/drive.file openid email';
+const FILE='jarvis_data.json',SCOPE='https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/calendar.readonly openid email';
 const h=(t,a={},...k)=>{const e=document.createElement(t);for(const[n,v]of Object.entries(a)){if(n==='class')e.className=v;else if(n.startsWith('on'))e.addEventListener(n.slice(2),v);else if(v!=null&&v!==false)e.setAttribute(n,v===true?'':v)}for(const c of k.flat())e.append(c&&c.nodeType?c:document.createTextNode(c??''));return e};
 const blank=()=>({notes:[],tasks:[],research:[],contacts:[],settings:{wake:'jarvis',voice:'',rate:.95,pitch:.9,muted:false},conversations:[]});
 const LS_DB='mj_db_v1',LS_TS='mj_db_ts',LS_PREV='mj_db_prev';
@@ -495,7 +495,7 @@ const norm=s=>s.replace(/[.!?]+$/,'').trim();
 const findBy=(list,q)=>/^\d+$/.test(q)?list[+q-1]:list.find(x=>(x.text||x.title||'').toLowerCase().includes(q.toLowerCase()));
 let awaiting=null,awaitT=null;
 const fix=s=>s.replace(/^(?:had|ad|at|and|eight|add)\s+(?:a\s+)?(?:not|nut|node|nope|note|memory note)\b/i,'add note').replace(/^adnut\b/i,'add note').replace(/^(?:had|ad|at|and|add)\s+(?:a\s+)?(?:tusk|desk|tasks?)\b/i,'add task').replace(/^(?:save|safe)\s+(?:the\s+)?(?:not|nut|node|note)\b/i,'save note');
-function run(input){
+async function run(input){
   if(!input||!input.trim())return;
   if(awaiting){const k=awaiting;awaiting=null;clearTimeout(awaitT);const t=norm(input);if(k==='note'){memory.add('notes',{text:t});return reply(input,'I have saved your note.')}if(k==='research'){memory.add('research',{title:t,url:'',notes:'',tags:[]});return reply(input,'Research saved.')}memory.add('tasks',{text:t,priority:'medium',done:false});return reply(input,'Task added.')}
   const c=fix(norm(input)),say=t=>reply(input,t);let m;
@@ -540,6 +540,18 @@ function run(input){
   if(/^(?:wake up|exit standby)$/i.test(c)){closeStandby();return say('Welcome back.')}
   if(/^(?:mute|be quiet)$/i.test(c)){reply(input,'Muted.');return setMute(true)}
   if(/^unmute$/i.test(c)){setMute(false);return say('Voice is back on.')}
+  if(/^(?:what(?:'s| is) on my|show|read|open) calendar(?:\s+(?:today|for today))?$/i.test(c)) {
+  if(!signedIn) return say('Please sign in with Google in Settings first.');
+  thinking = true; setState();
+  const cal = await getCalendar();
+  thinking = false; setState();
+  return say(cal);
+}
+
+if(m=c.match(/^(?:add|schedule)\s+(.+?)\s+(?:to\s+)?(?:my\s+)?calendar$/i)) {
+  return say(doAddEvent(m[1]));
+}
+
   if(/^(?:what(?:'s| is) the )?time$/i.test(c))return say('It is '+new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})+'.');
   if(/^(?:hello|hi|hey)$/i.test(c))return say('At your service.');
   if(brainReady())return askBrain(input);
@@ -573,8 +585,24 @@ function doPlay(query,svc){
   if(!S)return doPlay(query,'spotify');
   const t=launch(webIntent(S[1],S[2]),`Search ${S[0]} for ${query}`);return `Searching ${S[0]} for ${query}. Tap play on the result.`+tapNote(t)}
 function doNavigate(place){const t=launch(webIntent('https://www.google.com/maps/dir/?api=1&destination='+enc(place),'com.google.android.apps.maps'),'Navigate to '+place);return `Starting directions to ${place}.`+tapNote(t)}
-function renderContacts(){
-  const L=$('#ctList');if(!L)return;L.replaceChildren();$('#ctCount').textContent=db.contacts.length?db.contacts.length+' contact'+(db.contacts.length===1?'':'s')+' saved.':'No contacts yet.';
+ async function getCalendar() {
+  if (!signedIn) return "You need to sign in with Google first.";
+  try {
+    // Get events starting from today
+    const t = new Date().toISOString();
+    const r = await gfetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${t}&maxResults=5&singleEvents=true&orderBy=startTime`);
+    const j = await r.json();
+    if (!j.items || j.items.length === 0) return "You have no upcoming events.";
+    
+    // Format the events into a readable list
+    return j.items.map(e => {
+      const time = e.start.dateTime ? new Date(e.start.dateTime).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : 'All day';
+      return `${e.summary} at ${time}`;
+    }).join(', ');
+  } catch (e) { 
+    return "I could not read your calendar."; 
+  }
+ }                       function renderContacts(){           const L=$('#ctList');if(!L)return;L.replaceChildren();$('#ctCount').textContent=db.contacts.length?db.contacts.length+' contact'+(db.contacts.length===1?'':'s')+' saved.':'No contacts yet.';
   db.contacts.slice(0,12).forEach(c=>L.append(h('div',{class:'glass item'},h('div',{class:'t'},c.name,h('small',{},c.tel)),h('button',{class:'btn sm ghost',onclick:()=>memory.remove('contacts',c.id)},'Delete'))))}
 $('#ctAdd').onclick=()=>{const n=$('#ctName').value.trim(),t=$('#ctTel').value.trim();if(!n||!/\d{3,}/.test(t)){toast('Enter a name and a phone number.');return}memory.add('contacts',{name:n,tel:t});$('#ctName').value=$('#ctTel').value=''};
 $('#ctClear').onclick=()=>{if(db.contacts.length&&confirm('Remove all '+db.contacts.length+' contacts from Jarvis?')){db.contacts=[];memory.save();renderAll()}};
